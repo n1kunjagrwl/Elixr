@@ -1,0 +1,89 @@
+# Domain: notifications
+
+## Responsibility
+
+Generates and stores in-app notification banners for the user. This domain is a pure consumer — it subscribes to events from across the system and converts them into user-facing notifications. It never originates events and has no business logic of its own beyond mapping an event to a notification message and deep-link.
+
+Notifications are in-app only. No SMS, no email, no push notifications at this stage.
+
+---
+
+## Tables Owned
+
+### `notifications`
+| Column | Type | Description |
+|---|---|---|
+| `id` | `uuid` PK | — |
+| `user_id` | `uuid` NOT NULL | — |
+| `type` | `text` NOT NULL | Event type that created this notification (used for grouping/filtering) |
+| `title` | `text` NOT NULL | Short heading e.g. "Budget limit reached" |
+| `body` | `text` NOT NULL | Detail e.g. "You've spent ₹4,200 of your ₹4,000 Food & Dining budget this month." |
+| `metadata` | `jsonb` | Deep-link data for frontend navigation e.g. `{"route": "/budgets/goal/{id}"}` |
+| `read_at` | `timestamptz` NULLABLE | NULL = unread |
+| `created_at` | `timestamptz` | — |
+
+No `outbox` table — the notifications domain only consumes events and writes to its own table. It does not publish events.
+
+---
+
+## SQL Views Exposed
+
+None.
+
+---
+
+## Events Published
+
+None.
+
+---
+
+## Events Subscribed
+
+### `BudgetLimitWarning` (from `budgets`)
+Creates a notification:
+- Title: `"Approaching budget limit"`
+- Body: `"You've used {percent}% of your {category} budget (₹{spent} of ₹{limit}) this {period}."`
+- Metadata: `{"route": "/budgets", "goal_id": "{goal_id}"}`
+
+### `BudgetLimitBreached` (from `budgets`)
+Creates a notification:
+- Title: `"Budget limit exceeded"`
+- Body: `"You've exceeded your {category} budget by ₹{overage}. Spent ₹{spent} against a ₹{limit} limit."`
+- Metadata: `{"route": "/budgets", "goal_id": "{goal_id}"}`
+
+### `SIPDetected` (from `investments`)
+Creates a notification asking for confirmation:
+- Title: `"SIP payment detected"`
+- Body: `"We noticed a ₹{amount} debit that looks like your {instrument_name} SIP. Tap to confirm."`
+- Metadata: `{"route": "/investments/sip/confirm", "transaction_id": "{tx_id}", "sip_id": "{sip_id}"}`
+
+### `ExtractionCompleted` (from `statements`)
+Creates a notification confirming the statement has been processed:
+- Title: `"Statement processed"`
+- Body: `"{n} transactions from your {account_name} statement are ready to review."`
+- Metadata: `{"route": "/statements/{job_id}/review"}`
+
+### `EarningClassificationNeeded` (from `earnings`)
+Creates a notification asking the user to classify an ambiguous credit:
+- Title: `"New credit to classify"`
+- Body: `"A ₹{amount} credit arrived — is this income or a repayment from someone? Tap to classify."`
+- Metadata: `{"route": "/earnings/classify", "transaction_id": "{tx_id}"}`
+
+---
+
+## Service Methods Exposed
+
+None.
+
+---
+
+## Key Design Decisions
+
+**`metadata` as JSONB for deep-link routing.** The frontend reads `metadata.route` to navigate the user to the relevant screen when they tap a notification. Storing this as JSONB means new notification types can carry arbitrary navigation context without a schema change.
+
+**No delivery mechanism beyond in-app storage.** Notifications are written to the DB and the frontend polls `GET /notifications?unread=true`. This is deliberately simple. Push notifications, email, and SMS can be added later by adding a delivery worker that reads from this table and dispatches via the appropriate channel — the data model already supports it.
+
+**No deduplication at this layer.** The events that trigger notifications are already deduplicated at their source (e.g., `budgets` ensures only one breach alert per goal per period). The notifications domain trusts upstream event quality and creates one notification per event received.
+
+**Notifications are never deleted, only marked read.** This gives the user a notification history. The `read_at` column is set on explicit user action (`PATCH /notifications/{id}/read` or bulk `PATCH /notifications/read-all`). Old notifications can be archived (hidden from feed after 90 days) without deletion.
