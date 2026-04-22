@@ -58,7 +58,13 @@ This domain has no event-driven behaviour and no external integrations. It is de
 
 ## SQL Views Exposed
 
-None. Peers data is not consumed cross-domain.
+### `peer_contacts_public`
+```sql
+CREATE VIEW peer_contacts_public AS
+SELECT id, user_id, name FROM peer_contacts;
+```
+
+Used by the `earnings` domain during credit classification — it queries this view (filtered by `user_id`) to check whether a credit transaction's description mentions a known peer's name, indicating the credit may be a repayment rather than income. This is Pattern 1 (SQL view), the preferred cross-domain read mechanism.
 
 ---
 
@@ -76,7 +82,7 @@ None.
 
 ## Service Methods Exposed
 
-None via Pattern 3. However, the `earnings` domain does a lightweight check during credit classification: it reads peer contact names to see if the description of a credit transaction matches a known peer. This is done via a direct read on the `peer_contacts` view. A SQL view for this purpose should be added if the cross-domain read pattern becomes more frequent.
+None. The `earnings` domain reads peer contact names via the `peer_contacts_public` SQL view (Pattern 1) — see SQL Views Exposed above.
 
 ---
 

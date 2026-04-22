@@ -41,6 +41,9 @@ Phone is stored in E.164 format to ensure consistent formatting regardless of ho
 | `revoked_at` | `timestamptz` | Set on logout — both tokens are invalidated |
 | `created_at` | `timestamptz` | — |
 
+### `outbox`
+Standard outbox table. See [data-model.md](../data-model.md).
+
 ---
 
 ## SQL Views Exposed

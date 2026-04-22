@@ -1,6 +1,8 @@
 # Elixir — Architecture Overview
 
-Elixir is a multi-user personal finance PWA for tracking earnings, expenses, investments, and peer balances. It targets Indian users (INR primary, multi-currency with conversion) and supports all major investment instrument types. Users upload bank or credit card statements; an AI agent categorises transactions, asks for clarification when uncertain, and builds a running financial picture across accounts, categories, and time.
+Elixir is a multi-user personal finance PWA for tracking expenses, income, investments, and peer balances. It targets Indian users (INR primary, multi-currency with conversion) and supports all major investment instrument types. Users upload bank or credit card statements or log transactions manually; an AI agent categorises transactions, asks for clarification when uncertain, and builds a running picture of where money comes from and where it goes — across categories, accounts, and any user-defined time period.
+
+Elixir is an **expense and income tracking tool**, not a bank account manager or net worth calculator. It does not connect to banks, does not sync live account balances, and does not calculate taxes. Account labels exist solely to name a transaction source and track which statement date ranges have been imported.
 
 This is the entry point for the documentation. Read it first, then follow the links to go deeper.
 
@@ -151,15 +153,25 @@ Only when a synchronous return value is genuinely required and an event-driven a
 
 | Publisher | Event | Primary Consumers |
 |---|---|---|
-| `statements` | `ExtractionCompleted` | `transactions` |
+| `identity` | `UserRegistered` | _(future: onboarding)_ |
+| `identity` | `UserLoggedIn` | _(audit only — no consumers)_ |
+| `accounts` | `AccountLinked` | `notifications` |
+| `accounts` | `AccountRemoved` | `investments` |
+| `statements` | `StatementUploaded` | _(audit only — no consumers)_ |
+| `statements` | `ExtractionCompleted` | `transactions`, `notifications` |
 | `transactions` | `TransactionCreated` | `earnings`, `investments`, `budgets` |
 | `transactions` | `TransactionCategorized` | `budgets` |
-| `investments` | `SIPDetected` | `notifications` |
-| `investments` | `ValuationUpdated` | _(future: planning)_ |
+| `transactions` | `TransactionUpdated` | `budgets` |
+| `categorization` | `CategoryCreated` | _(audit only — no consumers)_ |
+| `earnings` | `EarningRecorded` | _(audit only — no consumers)_ |
 | `earnings` | `EarningClassificationNeeded` | `notifications` |
+| `investments` | `SIPDetected` | `notifications` |
+| `investments` | `SIPLinked` | _(audit only — no consumers)_ |
+| `investments` | `ValuationUpdated` | _(future: planning)_ |
 | `budgets` | `BudgetLimitWarning` | `notifications` |
 | `budgets` | `BudgetLimitBreached` | `notifications` |
-| `identity` | `UserRegistered` | _(future: onboarding)_ |
+| `import_` | `ImportBatchReady` | `transactions` |
+| `import_` | `ImportCompleted` | `notifications` |
 
 ---
 

@@ -2,7 +2,12 @@
 
 ## Responsibility
 
-Manages the financial accounts a user registers in Elixir — bank accounts and credit cards. An account represents a real-world account the user holds at a financial institution. It is the anchor for uploaded statements and logged transactions. The accounts domain does not hold balances or transaction history — it only holds metadata needed to identify and label an account.
+Provides named source labels for the user's bank accounts and credit cards. An account in Elixir is not a managed bank account — the application does not connect to banks, sync balances, or store statements after parsing. An account label exists for two purposes:
+
+1. **Transaction source identification** — attaches a human-readable name (e.g. "HDFC Savings") and display metadata (bank, last4, currency) to transactions and statement uploads.
+2. **Statement date range tracking** — records which date ranges have already been imported per account so the system can warn the user if a new upload overlaps a previously processed range.
+
+The accounts domain does not track current balances. Balance views are never a responsibility of this domain.
 
 ---
 
@@ -20,6 +25,7 @@ Manages the financial accounts a user registers in Elixir — bank accounts and 
 | `currency` | `char(3)` DEFAULT `'INR'` | Primary currency of this account |
 | `is_active` | `bool` DEFAULT true | Soft-delete; inactive accounts are hidden from UI |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 
 Account numbers are never stored in full. `last4` is sufficient to identify which account the user means during statement upload or transaction review.
 
@@ -37,6 +43,10 @@ Account numbers are never stored in full. `last4` is sufficient to identify whic
 | `currency` | `char(3)` DEFAULT `'INR'` | Primary billing currency |
 | `is_active` | `bool` DEFAULT true | — |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
+
+### `outbox`
+Standard outbox table. See [data-model.md](../data-model.md).
 
 ---
 
@@ -86,6 +96,7 @@ class AccountLinked:
     account_kind: str  # 'bank' | 'credit_card'
     nickname: str
 ```
+Consumed by: `notifications` — creates an onboarding nudge: *"Account added — upload a statement to start tracking transactions for this account."*
 
 ### `AccountRemoved`
 ```python
@@ -96,6 +107,7 @@ class AccountRemoved:
     user_id: UUID
     account_kind: str
 ```
+Consumed by: `investments` — deactivates any `sip_registrations` where `bank_account_id = event.account_id`. SIP debit detection against a removed account is meaningless; deactivation prevents false-positive SIP alerts.
 
 ---
 
@@ -111,12 +123,34 @@ None. Other domains reference accounts by ID only and read display metadata from
 
 ---
 
+## Statement Date Range Overlap Detection
+
+When a user uploads a new statement for an account, the `statements` domain stores the parsed `period_start` and `period_end` on the `statement_uploads` row (set during the parsing activity). Before committing the workflow's results, the system checks for any prior `statement_uploads` row for the same `account_id` with an overlapping date range:
+
+```sql
+SELECT id, period_start, period_end
+FROM statement_uploads
+WHERE account_id = :account_id
+  AND status = 'completed'
+  AND period_start <= :new_period_end
+  AND period_end   >= :new_period_start
+```
+
+If a match is found, the workflow emits an SSE warning to the frontend and creates a notification:
+*"This statement overlaps with a previously imported statement from {existing_start} to {existing_end}. Duplicate transactions will be skipped automatically."*
+
+Processing is not blocked — fingerprint deduplication in the `transactions` domain handles the actual duplicate prevention. The warning is informational only.
+
+---
+
 ## Key Design Decisions
+
+**Account labels are not managed bank connections.** The application does not sync live balances or connect to bank APIs. An account label is a user-created name for a transaction source, nothing more.
 
 **Account numbers never stored in full.** Only `last4` is kept, for display purposes (e.g. "HDFC ···4521"). This limits the impact of a DB breach — there is no recoverable account number.
 
-**No balance tracking in this domain.** The current balance of an account is always computed from the transaction history in the `transactions` domain. Storing a balance here would create a second source of truth that could drift.
+**No balance tracking in this domain.** Elixir is an expense and income tracker, not a balance reconciliation tool. Computing a "current balance" from transaction history is not a supported feature.
 
 **`is_active` soft delete.** Deleting an account would orphan all linked transactions and statements (which reference `account_id`). Soft deletes preserve history while hiding the account from active UI. An account can only be hard-deleted if it has no linked transactions — enforced in the service layer.
 
-**`billing_cycle_day` on credit cards.** This allows the budgets domain to align budget periods with the user's actual billing cycle (e.g., budget period runs 15th–14th if the card bills on the 15th), rather than forcing calendar months.
+**`billing_cycle_day` on credit cards.** This allows the budgets domain to align budget periods with the user's actual billing cycle (e.g., period runs 15th–14th if the card bills on the 15th), rather than forcing calendar months.

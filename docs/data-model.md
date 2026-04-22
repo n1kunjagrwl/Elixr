@@ -10,14 +10,14 @@ Each domain owns its tables exclusively. No other domain may write to them direc
 
 | Domain | Tables Owned |
 |---|---|
-| `identity` | `users`, `otp_requests`, `sessions` |
-| `accounts` | `bank_accounts`, `credit_cards` |
+| `identity` | `users`, `otp_requests`, `sessions`, `outbox` |
+| `accounts` | `bank_accounts`, `credit_cards`, `outbox` |
 | `statements` | `statement_uploads`, `extraction_jobs`, `raw_extracted_rows`, `outbox` |
 | `transactions` | `transactions`, `transaction_items`, `outbox` |
 | `categorization` | `categories`, `categorization_rules`, `outbox` |
 | `earnings` | `earnings`, `earning_sources`, `outbox` |
 | `investments` | `instruments`, `holdings`, `sip_registrations`, `valuation_snapshots`, `fd_details`, `outbox` |
-| `budgets` | `budget_goals`, `budget_alerts`, `outbox` |
+| `budgets` | `budget_goals`, `budget_progress`, `budget_alerts`, `outbox` |
 | `peers` | `peer_contacts`, `peer_balances`, `peer_settlements` |
 | `notifications` | `notifications` |
 | `fx` | `fx_rates` |
@@ -79,7 +79,7 @@ transactions
   source            text NOT NULL  -- 'manual' | 'statement_import' | 'recurring_detected' | 'import'
   raw_description   text           -- original description from statement
   notes             text           -- user-added notes
-  fingerprint       text           -- SHA-256 for deduplication during import
+  fingerprint       text           -- SHA-256 for deduplication; UNIQUE constraint is (user_id, fingerprint)
   created_at        timestamptz DEFAULT now()
 
 transaction_items
@@ -114,6 +114,7 @@ valuation_snapshots
   value               numeric(15,2)
   snapshot_date       date
   -- one row per holding per day; used for historical portfolio charts
+  -- UNIQUE constraint: (holding_id, snapshot_date)
 ```
 
 ### `peer_balances` + `peer_settlements`
@@ -153,6 +154,11 @@ These views are the only cross-domain read interface. Other domains query these 
 | `user_accounts_summary` | `accounts` | All accounts (bank + credit card) for a user |
 | `categories_for_user` | `categorization` | Default categories + user's custom categories merged |
 | `transactions_with_categories` | `transactions` | Transactions joined with items and category names |
+| `peer_contacts_public` | `peers` | `(id, user_id, name)` — used by `earnings` to match credit descriptions against known peer names |
+
+### Note on `categories_for_user`
+
+This view exposes default categories with `user_id = NULL`. Callers must filter with `WHERE user_id = :uid OR user_id IS NULL` to receive both the user's custom categories and the system defaults. A plain `WHERE user_id = :uid` will return only custom categories and silently exclude all defaults.
 
 ---
 
@@ -171,6 +177,8 @@ Tables that represent mutable user data also include:
 updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 ```
 
+Tables that are mutable but whose schemas omit `updated_at` for a documented reason must note that reason in their domain doc. Tables confirmed to require `updated_at`: `transactions`, `transaction_items`, `peer_balances`, `peer_contacts`, `instruments`, `holdings`, `sip_registrations`, `categories`, `categorization_rules`, `budget_goals`, `earning_sources`.
+
 ---
 
 ## Data Integrity Rules
@@ -179,4 +187,6 @@ updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 2. **Every row is user-scoped.** All queries must include a `WHERE user_id = :user_id` clause. PostgreSQL RLS enforces this at the DB level as a safety net.
 3. **Amounts are always `numeric(15,2)`.** Never float. Financial precision is non-negotiable.
 4. **Currency stored alongside amount.** Every `amount` column has a sibling `currency char(3)` column. Never assume INR.
-5. **Fingerprints for deduplication.** The `transactions.fingerprint` column (SHA-256 of normalised date + description + amount) prevents double-importing the same transaction.
+5. **Fingerprints for deduplication.** The `transactions.fingerprint` column (SHA-256 of normalised date + description + amount) prevents double-importing the same transaction. The unique constraint is composite: `UNIQUE (user_id, fingerprint)`. Two different users may have identical-looking transactions; their fingerprints must not collide.
+6. **Transfer transactions are excluded from budget and earnings tracking.** Any transaction with `type = 'transfer'` is a self-transfer between the user's own accounts. Budget handlers and earnings handlers must skip these rows. A transaction may be marked as `transfer` by automatic detection or by the user manually.
+7. **Budget spend is in the currency of the transaction, converted to the goal currency.** `budget_progress.current_spend` accumulates amounts converted to the goal's `currency` at the FX rate active at the time of the `TransactionCategorized` event. Never add raw foreign-currency amounts to an INR budget without conversion.

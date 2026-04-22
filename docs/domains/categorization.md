@@ -24,11 +24,14 @@ The `suggest_category()` service method is the bridge between raw transaction de
 | `is_active` | `bool` DEFAULT true | Users can hide categories they never use |
 | `created_at` | `timestamptz` | — |
 
-**Default expense categories** (seeded with `user_id = NULL`):
+**Default expense categories** (seeded with `user_id = NULL`, `kind = 'expense'`):
 Food & Dining, Groceries, Transport, Utilities, Shopping, Health & Medical, Entertainment, Travel, Education, Personal Care, Subscriptions, EMI & Loans, Rent, Investments (outflow), Others
 
-**Default income categories**:
+**Default income categories** (`kind = 'income'`):
 Salary, Freelance, Rental Income, Dividends, Interest, Business Income
+
+**Default transfer category** (`kind = 'transfer'`):
+Self Transfer — assigned automatically to transactions with `type = 'transfer'`. Excluded from all budget and earnings calculations.
 
 ### `categorization_rules`
 | Column | Type | Description |
@@ -79,7 +82,7 @@ FROM categories c
 WHERE c.user_id IS NOT NULL AND c.is_active = true;
 ```
 
-Callers filter this view by `user_id` to get the full set of categories available to a specific user: all defaults plus their custom additions.
+**Critical filter rule**: Default categories have `user_id = NULL`. Callers must use `WHERE user_id = :uid OR user_id IS NULL` to get both the user's custom categories and the system defaults. A plain `WHERE user_id = :uid` will silently return only custom categories and miss all defaults — producing empty category lists for new users.
 
 ---
 
@@ -121,8 +124,9 @@ class CategorySuggestion:
 ```
 
 **Resolution order:**
+0. If the caller provides `transaction_type = 'transfer'`: return the "Self Transfer" category with `confidence=1.0, source='rule'` immediately. Transfer detection takes precedence over all other rules.
 1. Check `categorization_rules` for this user — if a rule matches (by priority), return `confidence=1.0, source='rule'`
-2. If no rule matches, call the ADK categorisation agent with the description, amount, user's category list, and recent similar transactions as context
+2. If no rule matches, call the ADK categorisation agent with the description, amount, user's category list (queried with `WHERE user_id = :uid OR user_id IS NULL`), and recent similar transactions as context
 3. ADK agent returns a suggested category and confidence score
 4. If ADK returns `confidence < 0.85`, return `source='ai'` with the low confidence — caller decides whether to pause for user input
 
@@ -134,7 +138,7 @@ class CategorySuggestion:
 
 **`user_id = NULL` for default categories.** Rather than copying default categories into every user's account on registration, they live once with `user_id = NULL` and are merged via the `categories_for_user` view. Users only write new rows when they create custom categories. This avoids 15 rows per user at registration time and makes updating a default category's icon or name a single-row change.
 
-**`kind` field separates expense and income categories.** The UI for categorising a debit should only show expense categories; income classifications should only show income categories. Keeping this as a column rather than inferred from category name makes filtering trivial.
+**`kind` field separates expense, income, and transfer categories.** Valid values: `expense` | `income` | `transfer`. The UI for categorising a debit shows only expense categories; credits show only income categories; transactions with `type = 'transfer'` are assigned to transfer categories and excluded from budget and earnings tracking. A default "Self Transfer" category with `kind = 'transfer'` is seeded at startup. Keeping `kind` as a column rather than inferred from category name makes filtering trivial.
 
 **Rules engine runs before AI.** User-defined rules are deterministic and free (no API cost). Running them first means known merchants are classified instantly without an ADK call, saving latency and cost for the 80% of transactions the user has already trained the system on.
 

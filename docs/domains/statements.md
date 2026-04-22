@@ -17,11 +17,17 @@ The statements domain deliberately holds extracted rows in a staging state befor
 | `user_id` | `uuid` NOT NULL | — |
 | `account_id` | `uuid` NOT NULL | → `accounts.bank_accounts.id` or `credit_cards.id` (no PG FK) |
 | `account_kind` | `text` NOT NULL | `bank` \| `credit_card` |
-| `file_path` | `text` NOT NULL | User-scoped path on file storage, e.g. `uploads/{user_id}/{uuid}.pdf` |
+| `file_path` | `text` NOT NULL | User-scoped path during processing. File is deleted from storage after parsing completes — only the extracted rows are retained. |
 | `file_type` | `text` NOT NULL | `pdf` \| `csv` |
 | `original_filename` | `text` | Original name as uploaded (for display) |
-| `status` | `text` NOT NULL DEFAULT `'uploaded'` | `uploaded` \| `processing` \| `completed` \| `failed` |
+| `period_start` | `date` NULLABLE | Earliest transaction date found in the parsed statement. Set by the parsing activity. |
+| `period_end` | `date` NULLABLE | Latest transaction date found in the parsed statement. Set by the parsing activity. |
+| `status` | `text` NOT NULL DEFAULT `'uploaded'` | `uploaded` \| `processing` \| `completed` \| `partial` \| `failed` |
 | `uploaded_at` | `timestamptz` | — |
+
+`status = 'partial'`: the workflow timed out; classified rows were committed as transactions and unclassified rows were discarded. The user is notified of the discarded date range and may re-upload.
+
+`period_start` and `period_end` enable overlap detection — before emitting results, the workflow checks whether any prior completed or partial upload for the same `account_id` covers an overlapping date range. If so, an SSE warning is sent. Processing is never blocked; fingerprint deduplication handles the actual duplicate prevention.
 
 ### `extraction_jobs`
 | Column | Type | Description |
@@ -29,7 +35,7 @@ The statements domain deliberately holds extracted rows in a staging state befor
 | `id` | `uuid` PK | — |
 | `upload_id` | `uuid` FK → `statement_uploads.id` | — |
 | `temporal_workflow_id` | `text` | Temporal workflow run ID, for sending signals |
-| `status` | `text` NOT NULL DEFAULT `'queued'` | `queued` \| `parsing` \| `classifying` \| `awaiting_input` \| `completed` \| `failed` |
+| `status` | `text` NOT NULL DEFAULT `'queued'` | `queued` \| `parsing` \| `classifying` \| `awaiting_input` \| `completed` \| `partial` \| `failed` |
 | `total_rows` | `int` | Set after parsing completes |
 | `classified_rows` | `int` DEFAULT 0 | Incremented as rows are classified |
 | `error_message` | `text` | Populated if status = `failed` |
@@ -90,7 +96,25 @@ class ExtractionCompleted:
     account_kind: str
     classified_rows: list[dict]  # [{date, description, amount, currency, type, category_id, items}]
 ```
-Consumed by: `transactions` (creates transaction records from `classified_rows`)
+Consumed by: `transactions` (creates transaction records from `classified_rows`), `notifications` (creates "Statement processed" banner)
+
+### `ExtractionPartiallyCompleted`
+Published on workflow timeout when at least one row has been classified.
+
+```python
+@dataclass
+class ExtractionPartiallyCompleted:
+    event_type = "statements.ExtractionPartiallyCompleted"
+    job_id: UUID
+    upload_id: UUID
+    user_id: UUID
+    account_id: UUID
+    account_kind: str
+    classified_rows: list[dict]   # rows committed — same structure as ExtractionCompleted
+    discarded_from_date: date     # earliest date among unclassified rows that were dropped
+    discarded_to_date: date       # latest date among unclassified rows that were dropped
+```
+Consumed by: `transactions` (creates transaction records from `classified_rows`), `notifications` (creates a warning banner with the discarded date range)
 
 ---
 
@@ -107,12 +131,13 @@ None. The statements domain is triggered by an HTTP upload, not by domain events
 See [workflows/statement-processing.md](../workflows/statement-processing.md) for the full step-by-step sequence.
 
 Summary:
-1. Parse the uploaded file (pdfplumber or camelot for PDF; csv.DictReader for CSV)
+1. Parse the uploaded file (pdfplumber or camelot for PDF; csv.DictReader for CSV). Store `period_start` and `period_end` on `statement_uploads`. Check for date-range overlap with prior uploads and emit SSE warning if found.
 2. For each extracted row: call ADK agent for classification
 3. High-confidence rows (≥0.85): mark as `auto_classified`, stream to frontend
 4. Low-confidence rows: mark `pending`, stream with `needs_classification: true`, pause workflow via `waitForSignal`
 5. User submits classification → Temporal signal → workflow resumes
 6. On all rows classified: publish `ExtractionCompleted`, update `extraction_jobs.status = 'completed'`
+7. On 7-day timeout: publish `ExtractionPartiallyCompleted` for all classified rows, mark remaining `raw_extracted_rows` as `skipped`, set `extraction_jobs.status = 'partial'`, set `statement_uploads.status = 'partial'`
 
 ---
 

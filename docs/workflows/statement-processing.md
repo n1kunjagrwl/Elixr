@@ -62,6 +62,18 @@ Activity: parse_statement_file(upload_id)
   Update extraction_jobs.total_rows = len(rows)
   Update extraction_jobs.status = 'classifying'
   Write all rows to raw_extracted_rows (status: 'pending')
+
+  Set period_start and period_end on statement_uploads:
+    period_start = min(row.date for row in rows)
+    period_end   = max(row.date for row in rows)
+
+  Check for date-range overlap with prior completed/partial uploads for this account:
+    SELECT id, period_start, period_end FROM statement_uploads
+    WHERE account_id = :account_id AND status IN ('completed', 'partial')
+      AND period_start <= :period_end AND period_end >= :period_start
+    If overlap found:
+      → Emit SSE warning: { type: 'overlap_warning', existing_start, existing_end }
+      → Continue processing — overlap is informational only
 ```
 
 ### Step 4 — Classification loop (per row)
@@ -159,7 +171,7 @@ For each row in classified_rows:
 | File cannot be parsed | Mark job `failed`, notify user via SSE |
 | ADK agent timeout | Treat as low-confidence → ask user |
 | ADK returns no category | Treat as low-confidence → ask user |
-| User never classifies a row | Workflow times out after 7 days; job marked `failed`; partial rows that were classified are still committed |
+| User never classifies a row | Workflow times out after 7 days. All classified rows (auto + user-confirmed) are committed by publishing `ExtractionPartiallyCompleted`. Unclassified rows are marked `skipped`. `extraction_jobs.status` and `statement_uploads.status` are set to `partial`. A notification is created listing the discarded date range — the user can re-upload; fingerprint deduplication will skip already-committed rows and only process the discarded ones. |
 | Server restart mid-workflow | Temporal replays from the last durable checkpoint; already-classified rows are not re-processed |
 
 ---

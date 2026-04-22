@@ -51,6 +51,17 @@ None.
 
 ## Events Published
 
+### `ImportBatchReady`
+```python
+@dataclass
+class ImportBatchReady:
+    event_type = "import_.ImportBatchReady"
+    job_id: UUID
+    user_id: UUID
+    rows: list[dict]  # [{date, description, amount, currency, type, category_id, source='bulk_import'}]
+```
+Published after all rows are parsed and categorised. Consumed by: `transactions` (creates transaction and transaction_items records from `rows`)
+
 ### `ImportCompleted`
 ```python
 @dataclass
@@ -62,7 +73,7 @@ class ImportCompleted:
     skipped_rows: int
     failed_rows: int
 ```
-Consumed by: `notifications` (creates a "Import finished" banner)
+Published after the `transactions` domain has processed the batch. Consumed by: `notifications` (creates an "Import finished" banner)
 
 ---
 
@@ -84,7 +95,7 @@ Summary:
 3. Pause on `waitForSignal(ColumnMappingConfirmed)` — user confirms or corrects mapping
 4. Parse all rows using confirmed mapping
 5. For each row: compute fingerprint, check for duplicates, apply categorisation rules
-6. Bulk insert non-duplicate rows as transactions (calling `transactions` domain's service — Pattern 3, justified: batch insert requires synchronous creation)
+6. Publish `ImportBatchReady` (via outbox) — `transactions` domain subscribes and creates records
 7. Publish `ImportCompleted`
 
 ---

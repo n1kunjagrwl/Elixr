@@ -96,12 +96,14 @@ Activity: process_rows(job_id)
      SHA-256(lower(trim(description)) + date.isoformat() + str(amount))
 
   4. Deduplication check:
-     SELECT 1 FROM transactions WHERE user_id = ? AND fingerprint = ?
-     → If exists: skip, increment skipped_rows, continue
+     Compute fingerprint: SHA-256(lower(trim(description)) + date.isoformat() + str(amount))
+     Note: actual deduplication against existing transactions is performed by the `transactions`
+     domain when it processes `ImportBatchReady`. Track fingerprint here only for skipped_rows count.
 
   5. Category resolution:
      If file had a 'category' column and user mapped it:
-       Try to match the file's category name to categories_for_user by slug or exact name
+       Try to match the file's category name to categories_for_user
+       (WHERE user_id = :uid OR user_id IS NULL) by slug or exact name
        If matched: use as category_id
        If not matched: default to 'Others'
 
@@ -109,22 +111,22 @@ Activity: process_rows(job_id)
        Apply categorization_rules for this user (same as statement processing rules step)
        If no rule matches: category = 'Others'
 
-  6. Create transaction (call transactions.service.create):
-     source = 'bulk_import'
-     Emit TransactionCreated event
+  6. Collect row into batch:
+     { date, description, amount, currency, type, category_id, fingerprint, source='bulk_import' }
+     Increment import_jobs.imported_rows (estimated — final count comes from transactions handler)
 
-  7. Create transaction_items (one row, category as resolved above, label = NULL)
-     Emit TransactionCategorized event
-
-  8. Increment import_jobs.imported_rows
-
-  9. Emit SSE progress event every 50 rows:
+  7. Emit SSE progress event every 50 rows:
      { status: 'processing', imported: N, total: M, skipped: K }
 ```
 
-### Step 5 — Completion
+### Step 5 — Publish and complete
 
 ```
+  Publish ImportBatchReady event (via outbox):
+    { job_id, user_id, rows: [all collected rows] }
+  The `transactions` domain subscribes to this event and creates transaction + transaction_items
+  records, skipping any rows whose fingerprint already exists for this user.
+
   Update import_jobs.status = 'completed', completed_at = now()
   Publish ImportCompleted event (via outbox)
   Emit SSE event: { status: 'completed', imported_rows, skipped_rows, failed_rows, error_log }

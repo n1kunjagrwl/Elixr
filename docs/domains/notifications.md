@@ -70,6 +70,18 @@ Creates a notification asking the user to classify an ambiguous credit:
 - Body: `"A ₹{amount} credit arrived — is this income or a repayment from someone? Tap to classify."`
 - Metadata: `{"route": "/earnings/classify", "transaction_id": "{tx_id}"}`
 
+### `AccountLinked` (from `accounts`)
+Creates an onboarding nudge when the user adds a new account:
+- Title: `"Account added"`
+- Body: `"Upload a statement or log a transaction to start tracking {nickname}."`
+- Metadata: `{"route": "/statements/upload", "account_id": "{account_id}"}`
+
+### `ExtractionPartiallyCompleted` (from `statements`)
+Creates a warning when a statement timed out with unclassified rows:
+- Title: `"Statement partially imported"`
+- Body: `"{n} transactions were saved. Rows from {discarded_from_date} to {discarded_to_date} were not classified and have been discarded. Upload the statement again to process the remaining rows — duplicates will be skipped automatically."`
+- Metadata: `{"route": "/statements/upload", "account_id": "{account_id}"}`
+
 ---
 
 ## Service Methods Exposed

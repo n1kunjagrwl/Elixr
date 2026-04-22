@@ -86,17 +86,17 @@ Consumed by: `notifications` (creates in-app banner asking the user to classify 
 Handler logic when a credit transaction is created:
 
 ```
-1. If transaction.type != 'credit': skip
+1. If transaction.type == 'transfer': skip entirely. Self-transfers are never income.
+   If transaction.type != 'credit': skip.
 
 2. Apply heuristics to estimate whether this is income or a peer repayment:
    a. Check if amount matches a known earning_source pattern
       (e.g., same amount ±5% as a recurring salary credit on a similar day of month)
    b. Check if the description contains keywords like 'SALARY', 'NEFT', 'IMPS', 'salary',
       known employer name patterns
-   c. Check against peer_contacts: does the description mention a known peer's name?
-      (cross-domain read via SQL — peers domain does not expose a view, so this uses
-       a direct ID lookup via shared service call to the peers domain — Pattern 3, justified
-       because the earnings handler needs a synchronous yes/no to decide branching)
+   c. Check against peer_contacts: query the `peer_contacts_public` view (exposed by the
+      `peers` domain — Pattern 1 SQL view) to get peer names for this user.
+      Does the description mention a known peer's name?
 
 3. If high confidence it's income (score >= 0.85):
    → Create earnings record, publish EarningRecorded

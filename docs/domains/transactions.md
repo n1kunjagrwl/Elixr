@@ -22,7 +22,7 @@ The source of truth for all financial movements in the system. Every debit, cred
 | `source` | `text` NOT NULL | `manual` \| `statement_import` \| `recurring_detected` \| `bulk_import` |
 | `raw_description` | `text` | Original description as it appeared on the statement |
 | `notes` | `text` | User-added notes |
-| `fingerprint` | `text` UNIQUE per `user_id` | SHA-256 of normalised `date + description + amount` — prevents duplicate imports |
+| `fingerprint` | `text` | SHA-256 of normalised `date + description + amount`. Composite unique constraint: `UNIQUE (user_id, fingerprint)`. |
 | `created_at` | `timestamptz` | — |
 | `updated_at` | `timestamptz` | — |
 
@@ -33,8 +33,10 @@ The source of truth for all financial movements in the system. Every debit, cred
 | `transaction_id` | `uuid` FK → `transactions.id` | — |
 | `category_id` | `uuid` NOT NULL | → `categories.id` (no PG FK) |
 | `amount` | `numeric(15,2)` NOT NULL | Portion of the transaction in this category |
+| `currency` | `char(3)` NOT NULL DEFAULT `'INR'` | Matches the parent transaction's currency |
 | `label` | `text` | Item name e.g. "Butter Chicken", "Monthly Netflix". NULL = unlabelled |
 | `is_primary` | `bool` DEFAULT false | True for the first/main category when a transaction is split |
+| `updated_at` | `timestamptz` | — |
 
 **The 2-level model in practice:**
 
@@ -130,9 +132,14 @@ class TransactionUpdated:
     event_type = "transactions.TransactionUpdated"
     transaction_id: UUID
     user_id: UUID
+    date: date                        # transaction date — needed by budget handler for period checks
     changed_fields: list[str]
+    old_items: list[dict] | None      # [{category_id, amount, label, currency}] — set when 'items' in changed_fields
+    new_items: list[dict] | None      # [{category_id, amount, label, currency}] — set when 'items' in changed_fields
 ```
-Published when the user edits a transaction's category breakdown or notes.
+`old_items` and `new_items` are only populated when `'items'` is in `changed_fields`. For edits to `notes`, `type`, or other non-category fields, they are `None`.
+
+Published when the user edits a transaction's category breakdown, type, or notes. Consumed by: `budgets` (retroactive budget correction when categories change)
 
 ---
 
@@ -142,7 +149,22 @@ Published when the user edits a transaction's category breakdown or notes.
 
 When a statement processing job finishes, the transactions domain creates `transaction` and `transaction_items` records from the classified rows payload. Each row maps to one `transactions` row plus one or more `transaction_items` rows.
 
-Handler must be idempotent: check `fingerprint` before inserting. If a row with the same fingerprint already exists for this user, skip it.
+Handler must be idempotent: check `(user_id, fingerprint)` before inserting. If a row with the same fingerprint already exists for this user, skip it.
+
+### `ExtractionPartiallyCompleted` (from `statements`)
+
+Same handler as `ExtractionCompleted` — processes only the `classified_rows` portion of the payload. Unclassified rows have been discarded by the workflow and are not present in this event.
+
+### `ImportBatchReady` (from `import_`)
+
+When the import workflow finishes processing all rows, it publishes `ImportBatchReady` with the parsed and categorised rows. The transactions domain creates `transaction` and `transaction_items` records identically to the `ExtractionCompleted` handler.
+
+```python
+# Expected payload structure (matches ExtractionCompleted.classified_rows format)
+# [{date, description, amount, currency, type, category_id, items, source='bulk_import'}]
+```
+
+Handler must be idempotent: check `(user_id, fingerprint)` before inserting. If a fingerprint already exists, skip it. This means re-uploading the same CSV after a partial import is safe — only new rows are created.
 
 ---
 

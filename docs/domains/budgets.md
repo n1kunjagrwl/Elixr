@@ -110,6 +110,8 @@ Both consumed by: `notifications`
 The core handler:
 
 ```
+0. If transaction.type == 'transfer': skip entirely. Self-transfers are not expenses.
+
 1. Find all active budget_goals for this user where goal.category_id is in the transaction's item categories
 
 2. For each matching goal:
@@ -118,7 +120,8 @@ The core handler:
    c. If not in period: skip
 
 3. Upsert budget_progress for (goal_id, period_start):
-   current_spend += item.amount  (only the portion belonging to this goal's category)
+   current_spend += fx.convert(item.amount, item.currency, goal.currency)
+   (Convert item amount to the goal's currency at current FX rate before adding)
 
 4. Compute percent_used = current_spend / limit_amount
 
@@ -132,6 +135,34 @@ The core handler:
 ```
 
 Handler must be idempotent: check `budget_alerts` before publishing to avoid duplicate alerts if the same event is replayed.
+
+### `TransactionUpdated` (from `transactions`)
+
+Handles retroactive budget correction when the user re-categorizes a transaction.
+
+```
+0. If 'items' not in event.changed_fields: skip (only notes or type changed)
+   If event.old_items is None or event.new_items is None: skip
+
+1. For each item in old_items:
+   Find active budget_goals for this user where goal.category_id == item.category_id
+   For each matching goal:
+     a. Determine the period for this goal that contains event.date
+     b. If event.date not in any period: skip
+     c. Decrement budget_progress.current_spend by fx.convert(item.amount, item.currency, goal.currency)
+        (Never let current_spend go below 0 — floor at 0)
+
+2. For each item in new_items:
+   Find active budget_goals for this user where goal.category_id == item.category_id
+   For each matching goal:
+     a. Determine the period for this goal that contains event.date
+     b. If event.date not in any period: skip
+     c. Increment budget_progress.current_spend by fx.convert(item.amount, item.currency, goal.currency)
+
+3. Recheck thresholds for all affected goals and fire alerts if newly breached (same deduplication logic as TransactionCategorized)
+```
+
+Idempotency note: the increment/decrement approach is not inherently idempotent. If this event is re-dispatched (at-least-once delivery), the delta is applied twice. To guard against this, the handler checks whether the transaction's current items in the DB already match `new_items` before applying the correction. If they match, the correction has already been applied — skip.
 
 ---
 

@@ -172,7 +172,7 @@ All external API clients live in `platform/clients/`. Domains never import these
 
 ## Adding a New Integration
 
-1. Create `platform/clients/{name}.py` with a class that takes config from `shared/config.py`
+1. Create `platform/clients/{name}.py` with a class whose constructor receives the config values it needs (API key, base URL, etc.) as plain arguments — injected by `runtime/dependencies.py`. Do not import `Settings` or `shared/config.py` directly from a client class.
 2. Register it in `runtime/lifespan.py` (instantiate on startup, close on shutdown)
 3. Add it as a FastAPI dependency in `runtime/app.py`
 4. Document it in this file with: purpose, rate limits, owning domain, fallback behaviour

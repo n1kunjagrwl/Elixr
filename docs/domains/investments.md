@@ -127,6 +127,19 @@ class SIPLinked:
 
 ## Events Subscribed
 
+### `AccountRemoved` (from `accounts`)
+
+When a bank account label is removed by the user, deactivate any SIP registrations linked to it:
+
+```
+For each sip_registration where bank_account_id = event.account_id AND is_active = true:
+  UPDATE sip_registrations SET is_active = false
+```
+
+SIP detection compares incoming debits against active registrations only. Deactivating the registration ensures no false-positive SIP alerts are generated for an account the user considers gone. The holding itself is not affected — the user still owns the investment.
+
+Handler must be idempotent: setting `is_active = false` on an already-inactive row is a no-op.
+
 ### `TransactionCreated` (from `transactions`)
 
 When a debit transaction arrives, the handler checks if it matches any active SIP registration for this user:
