@@ -16,8 +16,8 @@ graph TB
         direction TB
         Runtime["runtime/\nHTTP · Middleware · Startup"]
         Domains["domains/\n12 Domain Packages"]
-        Shared["shared/\nEventBus · Outbox · Security · Config"]
-        Platform["platform/\nDB · Temporal · Storage"]
+        Shared["shared/\nEventBus · Outbox · Base · Exceptions"]
+        Platform["platform/\nSecurity · DB · Temporal · Clients"]
         Clients["platform/clients/\nExternal API Adapters"]
     end
 
@@ -70,12 +70,18 @@ All application code lives in `src/elixir/` split into four packages:
 
 | Package | What it is | Responsibility |
 |---|---|---|
-| `runtime/` | How the app runs | FastAPI app factory, middleware pipeline, startup/shutdown lifecycle |
-| `platform/` | External system adapters | DB engine + session factory, Temporal client, file storage, external API clients |
-| `shared/` | Infrastructure domains may use | EventBus, outbox poller, security utilities, config, SQLAlchemy base, common exceptions |
+| `runtime/` | How the app runs | Settings (config), FastAPI app factory, middleware pipeline, startup/shutdown lifecycle, DI composition root |
+| `platform/` | Infrastructure adapters | Security (JWT, bcrypt, AES-256), DB engine + session factory, Temporal client, file storage (TBD), external API clients |
+| `shared/` | Domain-safe utilities | EventBus, outbox poller, SQLAlchemy base + mixins, RequestContext, exceptions, pagination — no secrets, no config |
 | `domains/` | All business logic | 12 self-contained domain packages |
 
-**The rule domains must follow**: import from `shared/` and (via DI) `platform/clients/` only. Never import from `runtime/`. Never import from another domain's `models`, `services`, or `repositories`. See [ADR-0008](adr/0008-runtime-platform-shared-layers.md) and [project-structure.md](project-structure.md) for the full import table.
+**The rules domains must follow**:
+- Import from `shared/` and (via DI) `platform/clients/` only
+- Never import from `runtime/` — this makes domain services testable without a running HTTP server
+- Never import `Settings` or any `platform/security` primitive directly — receive what you need as constructor arguments
+- Never import from another domain's `models`, `services`, or `repositories`
+
+See [ADR-0008](adr/0008-runtime-platform-shared-layers.md) and [project-structure.md](project-structure.md) for the full import table.
 
 ---
 
@@ -90,7 +96,15 @@ All application code lives in `src/elixir/` split into four packages:
 | **Twilio** | OTP SMS delivery | Reliable carrier routing in India, delivery receipts, retry handling |
 | **PWA** | Frontend | Single codebase for mobile and desktop, installable on home screen, no App Store |
 | **pdfplumber + camelot** | PDF parsing | `pdfplumber` for text-layer PDFs; `camelot` for table-heavy or borderline scanned PDFs |
-| **Alembic** | DB schema migrations | Standard SQLAlchemy tool; migrations live alongside domain code |
+| **Loguru** | Application logging | Structured JSON to stdout in prod (collected by Loki), pretty-print in dev; no file sinks; PII-safe by convention |
+| **Grafana stack** | Observability | Loki (log aggregation) + Prometheus (metrics) + Tempo (distributed traces); self-hosted via Docker Compose |
+| **OpenTelemetry** | Instrumentation | OTel SDK instruments FastAPI, SQLAlchemy, and HTTP clients; exports traces to Tempo, metrics to Prometheus |
+| **GitHub Actions** | CI/CD | Lint → type-check → test → build on every PR; deploy on merge to `main` |
+| **Docker + Docker Compose** | Containerisation | All services (API, Temporal worker, PostgreSQL, Grafana stack) run in containers |
+| **PM2** | Process management (prod) | Starts and supervises Docker Compose services on the production host; restart-on-crash, log rotation |
+| **Alembic** | DB schema migrations | Autogenerate draft migrations, always reviewed and edited before committing; one domain per file |
+| **Ruff** | Linting + formatting | Fast Python linter and formatter; enforces import rules and code style in CI |
+| **mypy** | Static type checking | Strict type annotations across all layers; catches interface mismatches before runtime |
 | **uv** | Package management | Fast, reproducible lockfile, already configured |
 
 ---
@@ -158,6 +172,14 @@ Only when a synchronous return value is genuinely required and an event-driven a
 - Bank account numbers and card numbers stored AES-256 encrypted; only `last4` digits in plaintext
 - Uploaded statement files stored at user-scoped paths — never publicly accessible URLs
 - No PII (phone number, account numbers, card numbers) written to application logs
+
+---
+
+## Working Principle
+
+> **Confirm before implementing.** No feature, tech stack choice, file placement, domain design, or tooling decision is built until it is explicitly approved. If something is not documented as a confirmed decision in these docs or an ADR, it does not get written into code. Assumptions are not acceptable.
+
+This applies to AI-assisted development as much as to human development. If a question arises mid-implementation ("should this go in `shared/` or `platform/`?", "which logging library?"), stop and ask — don't guess.
 
 ---
 

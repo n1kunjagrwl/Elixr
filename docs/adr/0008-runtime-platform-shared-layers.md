@@ -41,18 +41,39 @@ Replace `core/` with three explicitly separated packages inside `src/elixir/`:
 
 | Package | What it contains |
 |---|---|
-| `runtime/` | FastAPI app factory, middleware pipeline, lifespan hooks (startup/shutdown) |
-| `platform/` | DB engine + session factory, Temporal client, file storage, external API clients |
-| `shared/` | Config, security utilities, EventBus, outbox poller, SQLAlchemy base, common exceptions |
+| `runtime/` | Settings (config), FastAPI app factory, middleware pipeline, lifespan hooks (startup/shutdown), FastAPI dependency functions |
+| `platform/` | Security utilities (JWT, bcrypt, AES-256), DB engine + session factory, Temporal client, external API clients |
+| `shared/` | EventBus, outbox poller, SQLAlchemy base + mixins, RequestContext, common exceptions, pagination schemas |
+
+**Why config belongs in `runtime/`, not `shared/`**: `Settings` is only safe to read at startup — it reads from environment variables and `.env` files. If it lived in `shared/`, any domain could do `from elixir.shared.config import settings` and bypass the injection rule. Placing it in `runtime/` makes that import impossible: `runtime/` is never imported by domains.
+
+**Why security belongs in `platform/`, not `shared/`**: JWT signing, bcrypt hashing, and AES-256 encryption are infrastructure-level operations that depend on secrets (JWT secret key, AES key) passed in from config at startup. They fit `platform/` — a layer of external-system adapters and security primitives — rather than `shared/`, which should contain utilities that are genuinely secret-free (base classes, event bus, exception types).
 
 With this import rule table:
 
 | Layer | May import from | Must NOT import from |
 |---|---|---|
 | `runtime/` | `platform/`, `shared/`, `domains/` | — |
-| `platform/` | `shared/config` only | `runtime/`, `domains/`, other `platform/` |
-| `shared/` | `platform/db`, `platform/temporal` | `runtime/`, `domains/` |
-| `domains/{x}/` | `shared/`, injected `platform/clients/` | `runtime/`, `domains/{y}/` internals |
+| `platform/` | stdlib + third-party only | `runtime/`, `shared/`, `domains/` |
+| `shared/` | stdlib + third-party only | `runtime/`, `platform/`, `domains/` |
+| `domains/{x}/` | `shared/`, injected `platform/clients/` | `runtime/`, `platform/` directly, `domains/{y}/` internals |
+
+**How domains get settings values**: `runtime/dependencies.py` assembles whatever the domain service needs and passes it via constructor injection. A domain service never calls `Settings()` or imports from `runtime/`. It receives a concrete value (a `str`, a `bool`, a typed config sub-object) through its constructor.
+
+```python
+# runtime/dependencies.py
+def get_identity_service(
+    session: AsyncSession = Depends(get_db_session),
+    twilio: TwilioClient = Depends(get_twilio_client),
+    settings: Settings = Depends(get_settings),
+) -> IdentityService:
+    return IdentityService(session=session, twilio=twilio, jwt_secret=settings.jwt_secret)
+
+# domains/identity/services.py — Settings is never imported here
+class IdentityService:
+    def __init__(self, session: AsyncSession, twilio: TwilioClient, jwt_secret: str):
+        ...
+```
 
 External API clients (`platform/clients/`) are injected into domain services via FastAPI dependency injection — they are never imported directly by domain code.
 

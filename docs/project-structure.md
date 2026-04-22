@@ -19,17 +19,20 @@ elixir/
 │
 ├── src/
 │   └── elixir/
-│       ├── runtime/                   ← how the app runs
+│       ├── runtime/                   ← how the app runs (never imported by domains)
 │       │   ├── __init__.py
+│       │   ├── config.py              ← pydantic-settings Settings class (ONLY read here)
 │       │   ├── app.py                 ← FastAPI factory + domain router registration
-│       │   ├── lifespan.py            ← startup/shutdown (DB pool, Temporal, outbox worker)
-│       │   └── middleware.py          ← auth, CORS, request logging
+│       │   ├── lifespan.py            ← startup/shutdown; instantiates domain singletons
+│       │   ├── middleware.py          ← auth, CORS, request logging
+│       │   └── dependencies.py        ← FastAPI Depends functions; the only composition root
 │       │
-│       ├── platform/                  ← external system adapters
+│       ├── platform/                  ← infrastructure adapters (no runtime/ or shared/ imports)
 │       │   ├── __init__.py
+│       │   ├── security.py            ← JWT encode/decode, bcrypt, AES-256
 │       │   ├── db.py                  ← SQLAlchemy async engine + session factory
 │       │   ├── temporal.py            ← Temporal client + worker factory
-│       │   ├── storage.py             ← file storage interface (local now, S3-ready)
+│       │   ├── storage.py             ← file storage (backend TBD — pending deployment decision)
 │       │   └── clients/
 │       │       ├── __init__.py
 │       │       ├── twilio.py
@@ -40,13 +43,12 @@ elixir/
 │       │       ├── metals_api.py
 │       │       └── exchangerate.py
 │       │
-│       ├── shared/                    ← infrastructure all domains may import
+│       ├── shared/                    ← domain-safe utilities (no config, no secrets)
 │       │   ├── __init__.py
-│       │   ├── config.py              ← pydantic-settings Settings class
-│       │   ├── security.py            ← JWT encode/decode, bcrypt, AES-256
 │       │   ├── events.py              ← EventBus class + event base dataclass
 │       │   ├── outbox.py              ← outbox poller background task
 │       │   ├── base.py                ← SQLAlchemy DeclarativeBase + id/timestamps mixin
+│       │   ├── context.py             ← RequestContext dataclass (user_id, session_id, request_id, db)
 │       │   ├── exceptions.py          ← ElixirError base + common HTTP errors
 │       │   └── pagination.py          ← PagedResponse Pydantic schema
 │       │
@@ -103,13 +105,17 @@ This table defines what each layer is allowed to import. Violations break domain
 | Layer | May import from | Must NOT import from |
 |---|---|---|
 | `runtime/` | `platform/`, `shared/`, `domains/` | — |
-| `platform/` | `shared/config` only | `runtime/`, `domains/`, other `platform/` modules |
-| `shared/` | `platform/db`, `platform/temporal` | `runtime/`, `domains/` |
-| `domains/{x}/` | `shared/`, injected `platform/clients/` | `runtime/`, `domains/{y}/` internals |
+| `platform/` | stdlib + third-party only | `runtime/`, `shared/`, `domains/` |
+| `shared/` | stdlib + third-party only | `runtime/`, `platform/`, `domains/` |
+| `domains/{x}/` | `shared/`, injected `platform/clients/` | `runtime/`, `platform/` directly, `domains/{y}/` internals |
 
-**Critical rule**: Domains never import from `runtime/`. A domain's services, repositories, and workflows must be fully executable without a running FastAPI app. This enables isolated unit testing and makes future microservice extraction straightforward.
+**Critical rule — domains never import from `runtime/`**: A domain's services, repositories, and workflows must be fully executable without a running FastAPI app. This enables isolated unit testing and future microservice extraction.
 
-**Why `platform/clients/` are injected, not imported directly**: External API clients are infrastructure adapters. Receiving them via FastAPI's dependency injection means a domain's service layer can be tested with a mock client without patching imports. It also means swapping a price provider (e.g., Eodhd → Zerodha Kite) only touches `platform/clients/` and the DI wiring in `runtime/app.py`.
+**Critical rule — `runtime/config.py` is the only place `Settings` is instantiated**: No domain, `platform/` module, or `shared/` module may import `Settings`. Config values that a service needs (a secret key, an API URL) are passed in as constructor arguments by `runtime/dependencies.py` — the single composition root.
+
+**Why `platform/clients/` are injected, not imported directly**: External API clients are infrastructure adapters. Receiving them via FastAPI's DI means a domain's service layer can be tested with a mock client without patching imports. It also means swapping a provider (e.g., Eodhd → Zerodha Kite) only touches `platform/clients/` and the DI wiring in `runtime/dependencies.py`.
+
+**Why `platform/security.py` is not in `shared/`**: Security operations (JWT signing, bcrypt, AES-256) require secret keys. Those keys come from `Settings`, which lives in `runtime/`. If `security.py` lived in `shared/`, domains could import it and call it directly with hardcoded or borrowed keys. In `platform/`, security utilities are used by `runtime/` only and injected into services that need them (e.g., `IdentityService` receives a `jwt_secret: str`, not a reference to `JWTSigner`).
 
 ---
 
