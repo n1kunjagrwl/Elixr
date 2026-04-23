@@ -121,9 +121,9 @@ class TransactionCategorized:
     event_type = "transactions.TransactionCategorized"
     transaction_id: UUID
     user_id: UUID
-    items: list[dict]  # [{category_id, amount, label}]
+    items: list[dict]  # [{category_id, amount, currency, label}]
 ```
-Published when items are first written or subsequently updated. Consumed by: `budgets`
+`currency` in each item matches the parent transaction's currency and is required by the `budgets` handler for FX conversion before updating `budget_progress`. Published when items are first written or subsequently updated. Consumed by: `budgets`
 
 ### `TransactionUpdated`
 ```python
@@ -171,6 +171,49 @@ Handler must be idempotent: check `(user_id, fingerprint)` before inserting. If 
 ## Service Methods Exposed
 
 None. Other domains read from the `transactions_with_categories` view.
+
+---
+
+## Temporal Workflows
+
+### `RecurringTransactionDetectionWorkflow`
+
+See [workflows/recurring-detection.md](../workflows/recurring-detection.md).
+
+**Schedule**: Weekly, Sunday 02:00 IST.
+
+Scans the last 90 days of debit transactions for each user. Groups by normalised merchant description and checks for consistent intervals (daily, weekly, fortnightly, monthly, quarterly). Clusters with ≥2 occurrences and consistent intervals are labelled `source = 'recurring_detected'`. A single notification is published per cluster — not one per transaction.
+
+This workflow does not create new transactions, change categories, or set up budget rules. It labels existing transactions and informs the user. All follow-up action is user-initiated.
+
+### Transfer Detection (post-import scan)
+
+After each `ExtractionCompleted` or `ExtractionPartiallyCompleted` event is processed, the transactions service runs a lightweight scan for potential self-transfers among the newly created transactions:
+
+```
+For each newly created transaction T:
+  If T.type is already 'transfer': skip.
+
+  Look for a counterpart transaction C where:
+    - C.user_id    = T.user_id
+    - C.account_id ≠ T.account_id          (different account)
+    - C.amount     = T.amount               (exact match)
+    - C.currency   = T.currency
+    - C.date       within ±2 days of T.date
+    - C.type is the opposite of T.type      (debit ↔ credit)
+
+  If a match C is found:
+    → Update both T and C: set type = 'transfer'
+    → Assign both to the "Self Transfer" category (kind='transfer')
+    → Emit an SSE event / notification:
+       "Transfer detected between {account_A} and {account_B} on {date}. Tap to review."
+
+  If no match: skip — the user can manually set type = 'transfer' via the edit UI.
+```
+
+The counterpart C may come from a prior statement or a prior import, not only from the same job. The scan queries the last 5 days of transactions for the user to bound the cost. Because the match requires exact amount, same currency, same user, and different accounts, false-positive rates are very low for personal finance (two separate ₹50,000 debits/credits on different accounts within 2 days are almost always a transfer).
+
+**Manual path**: The user can edit any transaction and set `type = 'transfer'`. The edit publishes `TransactionUpdated` with `changed_fields = ['type']`. `budgets` and `earnings` check `type == 'transfer'` on every handler entry and skip accordingly.
 
 ---
 

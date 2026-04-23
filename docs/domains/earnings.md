@@ -19,6 +19,7 @@ Peer repayments received from friends or family are explicitly **not** earnings.
 | `type` | `text` NOT NULL | `salary` \| `freelance` \| `rental` \| `dividend` \| `interest` \| `business` \| `other` |
 | `is_active` | `bool` DEFAULT true | Inactive sources are hidden from manual entry dropdowns |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 
 Earning sources are optional user-defined labels for recurring income origins. A user may have "Think41 Salary" and "Freelance — Acme Corp" as separate sources, allowing income to be analysed by origin.
 
@@ -36,6 +37,7 @@ Earning sources are optional user-defined labels for recurring income origins. A
 | `date` | `date` NOT NULL | — |
 | `notes` | `text` | — |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 
 ### `outbox`
 Standard outbox table.

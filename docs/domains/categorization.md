@@ -17,12 +17,13 @@ The `suggest_category()` service method is the bridge between raw transaction de
 | `user_id` | `uuid` NULLABLE | NULL for default categories; set for user-created categories |
 | `name` | `text` NOT NULL | Display name e.g. "Food & Dining" |
 | `slug` | `text` NOT NULL | URL-safe identifier e.g. `food-dining` |
-| `kind` | `text` NOT NULL | `expense` \| `income` — drives which transactions it applies to |
+| `kind` | `text` NOT NULL | `expense` \| `income` \| `transfer` — drives which transactions it applies to |
 | `parent_id` | `uuid` NULLABLE FK → `categories.id` | Reserved for sub-categories (future use) |
 | `icon` | `text` | Emoji or icon identifier for UI |
 | `is_default` | `bool` DEFAULT false | True for system-seeded categories |
 | `is_active` | `bool` DEFAULT true | Users can hide categories they never use |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 
 **Default expense categories** (seeded with `user_id = NULL`, `kind = 'expense'`):
 Food & Dining, Groceries, Transport, Utilities, Shopping, Health & Medical, Entertainment, Travel, Education, Personal Care, Subscriptions, EMI & Loans, Rent, Investments (outflow), Others
@@ -44,6 +45,7 @@ Self Transfer — assigned automatically to transactions with `type = 'transfer'
 | `priority` | `int` DEFAULT 0 | Higher priority rules are checked first |
 | `is_active` | `bool` DEFAULT true | — |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 
 ### `outbox`
 Standard outbox table.

@@ -25,6 +25,7 @@ The master registry of all investable instruments known to the system.
 | `data_source` | `text` NULLABLE | Which API client provides prices (`amfi`, `eodhd`, `coingecko`, `twelve_data`, `metals_api`, `calculated`) |
 | `govt_rate_percent` | `numeric(6,3)` NULLABLE | For PPF/NPS: current government-declared interest rate |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 
 ### `holdings`
 | Column | Type | Description |
@@ -39,6 +40,7 @@ The master registry of all investable instruments known to the system.
 | `current_price` | `numeric(15,4)` | Last known price per unit |
 | `last_valued_at` | `timestamptz` | When `current_value` was last updated |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 
 ### `sip_registrations`
 | Column | Type | Description |
@@ -52,6 +54,7 @@ The master registry of all investable instruments known to the system.
 | `bank_account_id` | `uuid` | → `bank_accounts.id` (no PG FK) — which account the debit comes from |
 | `is_active` | `bool` DEFAULT true | — |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 
 ### `valuation_snapshots`
 | Column | Type | Description |
@@ -150,12 +153,22 @@ For each active sip_registration for this user:
   - Does the transaction date fall within ±3 days of the expected debit_day?
   - Does the bank_account_id match?
 
-If match found:
+If one match found:
   → Publish SIPDetected (user confirms or dismisses via the notification)
+
+If multiple matches found:
+  → Publish SIPDetected for each matching registration
+  → User receives a separate notification for each
+  → User confirms one and dismisses the others
+  The handler must not assume a single match. Multiple SIPDetected events
+  for the same transaction_id are valid. The notifications domain creates
+  one notification per event. The user is expected to act on exactly one.
 
 If no match:
   → Skip (not an SIP transaction)
 ```
+
+Handler must be idempotent: before publishing `SIPDetected`, check whether an event for `(transaction_id, sip_registration_id)` has already been published (e.g., via a prior outbox row). Re-emitting on retry would create duplicate notifications.
 
 ---
 

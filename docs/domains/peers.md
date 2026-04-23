@@ -19,6 +19,7 @@ This domain has no event-driven behaviour and no external integrations. It is de
 | `phone` | `text` NULLABLE | Phone number (informational only, not used for notifications) |
 | `notes` | `text` NULLABLE | Any context the user wants to store |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 
 ### `peer_balances`
 | Column | Type | Description |
@@ -35,6 +36,7 @@ This domain has no event-driven behaviour and no external integrations. It is de
 | `status` | `text` NOT NULL DEFAULT `'open'` | `open` \| `partial` \| `settled` |
 | `linked_transaction_id` | `uuid` NULLABLE | → `transactions.id` (no PG FK). Optional link to the originating transaction |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 | `notes` | `text` NULLABLE | — |
 
 `status` transitions:

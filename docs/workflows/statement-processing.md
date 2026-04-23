@@ -62,6 +62,7 @@ Activity: parse_statement_file(upload_id)
   Update extraction_jobs.total_rows = len(rows)
   Update extraction_jobs.status = 'classifying'
   Write all rows to raw_extracted_rows (status: 'pending')
+  Delete the uploaded file from storage (file is no longer needed after parsing)
 
   Set period_start and period_end on statement_uploads:
     period_start = min(row.date for row in rows)

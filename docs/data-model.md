@@ -26,14 +26,25 @@ Each domain owns its tables exclusively. No other domain may write to them direc
 Every domain that publishes events has its own `outbox` table. The schema is identical across domains:
 ```sql
 outbox (
-    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    event_type  text NOT NULL,
-    payload     jsonb NOT NULL,
-    status      text NOT NULL DEFAULT 'pending',  -- pending | processed | failed
-    created_at  timestamptz NOT NULL DEFAULT now(),
-    processed_at timestamptz
+    id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type   text NOT NULL,
+    payload      jsonb NOT NULL,
+    status       text NOT NULL DEFAULT 'pending',  -- pending | processed | failed
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    processed_at timestamptz,
+    attempt_count int NOT NULL DEFAULT 0,
+    last_error   text
 )
 ```
+
+**Status lifecycle:**
+- `pending` — written atomically with the business operation. Awaiting dispatch by the outbox poller.
+- `processed` — the EventBus dispatched the event and all registered handlers completed without error. Set by the poller immediately after successful dispatch.
+- `failed` — the poller has attempted dispatch `MAX_OUTBOX_ATTEMPTS` times (default: 5) and all attempts resulted in an unhandled exception from a handler. The row is marked `failed` and removed from the polling window. `last_error` is populated with the final exception message. A `failed` row requires manual investigation — it represents an event that could not be delivered and a domain state that may be inconsistent.
+
+**At-least-once delivery and idempotency**: The narrow window between "dispatch to EventBus" and "mark processed" means a server crash can cause the same event to be dispatched more than once. **Every event handler in every domain must be idempotent.** This is not optional — it is an invariant of the outbox pattern. Each handler must check whether its side effect has already been applied before applying it again (e.g., check if a record already exists before creating it, check if a counter has already been incremented for this event ID).
+
+**Monitoring**: The health check endpoint (`GET /health`) reports `degraded` if any outbox table has rows with `status = 'pending'` older than 30 seconds (poller may be down) or any rows with `status = 'failed'` (permanent delivery failure).
 
 ---
 
@@ -177,7 +188,7 @@ Tables that represent mutable user data also include:
 updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 ```
 
-Tables that are mutable but whose schemas omit `updated_at` for a documented reason must note that reason in their domain doc. Tables confirmed to require `updated_at`: `transactions`, `transaction_items`, `peer_balances`, `peer_contacts`, `instruments`, `holdings`, `sip_registrations`, `categories`, `categorization_rules`, `budget_goals`, `earning_sources`.
+Tables that are mutable but whose schemas omit `updated_at` for a documented reason must note that reason in their domain doc. Tables confirmed to require `updated_at`: `transactions`, `transaction_items`, `peer_balances`, `peer_contacts`, `instruments`, `holdings`, `sip_registrations`, `categories`, `categorization_rules`, `budget_goals`, `earning_sources`, `earnings`.
 
 ---
 

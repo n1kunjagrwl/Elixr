@@ -25,6 +25,7 @@ The domain reacts to categorised transactions passively via events. It never que
 | `rollover` | `bool` DEFAULT false | Reserved for future: carry unspent budget to next period |
 | `is_active` | `bool` DEFAULT true | — |
 | `created_at` | `timestamptz` | — |
+| `updated_at` | `timestamptz` | — |
 
 **Period resolution logic** (computed in the service, not stored):
 - `monthly` with no anchor: period = calendar month (1st–last day)

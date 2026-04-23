@@ -82,6 +82,12 @@ Creates a warning when a statement timed out with unclassified rows:
 - Body: `"{n} transactions were saved. Rows from {discarded_from_date} to {discarded_to_date} were not classified and have been discarded. Upload the statement again to process the remaining rows — duplicates will be skipped automatically."`
 - Metadata: `{"route": "/statements/upload", "account_id": "{account_id}"}`
 
+### `ImportCompleted` (from `import_`)
+Creates a completion notification when a bulk import finishes:
+- Title: `"Import complete"`
+- Body: `"{imported_rows} transactions imported. {skipped_rows} duplicates skipped."`
+- Metadata: `{"route": "/transactions", "job_id": "{job_id}"}`
+
 ---
 
 ## Service Methods Exposed
@@ -96,6 +102,14 @@ None.
 
 **No delivery mechanism beyond in-app storage.** Notifications are written to the DB and the frontend polls `GET /notifications?unread=true`. This is deliberately simple. Push notifications, email, and SMS can be added later by adding a delivery worker that reads from this table and dispatches via the appropriate channel — the data model already supports it.
 
-**No deduplication at this layer.** The events that trigger notifications are already deduplicated at their source (e.g., `budgets` ensures only one breach alert per goal per period). The notifications domain trusts upstream event quality and creates one notification per event received.
+**Idempotency per handler.** Each handler guards against duplicate notifications caused by at-least-once event delivery. The guard key varies by notification type:
+- `BudgetLimitWarning` / `BudgetLimitBreached`: check for an existing notification with matching `type`, `metadata->>'goal_id'`, and `metadata->>'period_start'` before inserting.
+- `SIPDetected`: check for existing notification with `type = 'SIPDetected'` and `metadata->>'transaction_id'` + `metadata->>'sip_id'` pair.
+- `EarningClassificationNeeded`: check for existing notification with `type` and `metadata->>'transaction_id'`.
+- `ExtractionCompleted` / `ExtractionPartiallyCompleted`: check for existing notification with `type` and `metadata->>'job_id'`.
+- `AccountLinked` / `ImportCompleted`: check for existing notification with `type` and `metadata->>'account_id'` or `metadata->>'job_id'` respectively.
+If a matching notification already exists, skip insertion — do not create a duplicate.
+
+**No deduplication at this layer beyond idempotency.** The events that trigger notifications are already deduplicated at their source (e.g., `budgets` ensures only one breach alert per goal per period). The idempotency check above handles re-delivery of the same event; it does not suppress intentional repeated events (e.g., a second SIP on a different date).
 
 **Notifications are never deleted, only marked read.** This gives the user a notification history. The `read_at` column is set on explicit user action (`PATCH /notifications/{id}/read` or bulk `PATCH /notifications/read-all`). Old notifications can be archived (hidden from feed after 90 days) without deletion.

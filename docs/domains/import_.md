@@ -75,6 +75,8 @@ class ImportCompleted:
 ```
 Published after the `transactions` domain has processed the batch. Consumed by: `notifications` (creates an "Import finished" banner)
 
+**Count discrepancy note**: `import_jobs.imported_rows` is set by the import workflow based on rows that passed validation and were included in `ImportBatchReady`. However, the `transactions` domain may skip some of those rows via fingerprint deduplication (if a row already exists from a prior import or statement upload). The `ImportCompleted` event carries the import domain's count; the actual number of new transactions created may be lower. The notifications domain surfaces the import domain's count — callers should treat it as "rows submitted for import" not "transactions created".
+
 ---
 
 ## Events Subscribed

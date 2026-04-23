@@ -4,6 +4,10 @@ Elixir is a multi-user personal finance PWA for tracking expenses, income, inves
 
 Elixir is an **expense and income tracking tool**, not a bank account manager or net worth calculator. It does not connect to banks, does not sync live account balances, and does not calculate taxes. Account labels exist solely to name a transaction source and track which statement date ranges have been imported.
 
+**Scope exclusions**: Joint accounts are not supported — every account, transaction, and investment is owned by exactly one user. There is no shared-access model, no household view, and no multi-owner balance. Each user sees only their own data.
+
+**First-run experience**: A new user registers → adds an account label → uploads a bank or credit card statement (or manually logs their first transaction). The statement upload triggers the AI classification workflow. Once complete, the user sees their transactions categorised and can refine categories, set budgets, and log investments from there.
+
 This is the entry point for the documentation. Read it first, then follow the links to go deeper.
 
 ---
@@ -159,6 +163,7 @@ Only when a synchronous return value is genuinely required and an event-driven a
 | `accounts` | `AccountRemoved` | `investments` |
 | `statements` | `StatementUploaded` | _(audit only — no consumers)_ |
 | `statements` | `ExtractionCompleted` | `transactions`, `notifications` |
+| `statements` | `ExtractionPartiallyCompleted` | `transactions`, `notifications` |
 | `transactions` | `TransactionCreated` | `earnings`, `investments`, `budgets` |
 | `transactions` | `TransactionCategorized` | `budgets` |
 | `transactions` | `TransactionUpdated` | `budgets` |
