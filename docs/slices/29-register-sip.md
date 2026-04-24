@@ -70,7 +70,7 @@ If matched, a `SIPDetected` event is published, which the Notifications domain c
 - **Debit day out of range**: Days 29–31 are not allowed for monthly/quarterly frequency (shown as greyed out in the UI) to prevent missed detections in short months.
 - **Duplicate SIP registration**: If a `sip_registrations` row already exists for the same `user_id` + `instrument_id` + `bank_account_id` + `frequency` + `debit_day` and `is_active = true`, the backend returns a 409 Conflict: "An active SIP for this instrument and account already exists."
 - **Amount too small**: Amounts below ₹100 are rejected as implausible SIP amounts (422 validation error).
-- **Bank account removed after registration**: The `AccountRemoved` event sets `is_active = false` on all `sip_registrations` for that account. A notification informs the user that the SIP registration was deactivated.
+- **Bank account removed after registration**: The `AccountRemoved` event sets `is_active = false` on all `sip_registrations` for that account. The SIP registration is silently deactivated — no in-app notification is sent. The user will notice the change when they view the investment's detail page, where the "SIP Active" badge will be gone. A future `SIPRegistrationDeactivated` event could notify the user.
 - **Multiple matches at detection time**: If a single transaction matches two or more active SIP registrations, a `SIPDetected` notification is published for each. The user will see multiple notifications and must confirm the correct one (see slice 30).
 
 ## Success Outcome

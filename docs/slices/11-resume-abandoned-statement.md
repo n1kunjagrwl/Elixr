@@ -4,7 +4,7 @@
 Return to a statement classification session that was left incomplete (browser closed, app backgrounded, or user navigated away).
 
 ## Trigger
-User taps a notification ("Statement partially classified — tap to continue") or navigates to the Statements section and sees a statement with status `in_progress`.
+User navigates to the Statements section and sees a statement with status `in_progress`.
 
 ## Preconditions
 - An `extraction_jobs` row exists with `status = 'awaiting_input'` (workflow paused at `waitForSignal`).
@@ -14,7 +14,7 @@ User taps a notification ("Statement partially classified — tap to continue") 
 ## Steps
 
 ### Step 1: Open In-Progress Statement
-**User action**: Taps the in-progress statement card or notification deep-link.
+**User action**: Taps the in-progress statement card.
 **System response**: The frontend calls `GET /statements/{job_id}` which returns:
 - All `raw_extracted_rows` for the job, with their current `classification_status`.
 - `extraction_jobs.classified_rows` and `total_rows` for a progress indicator.
@@ -42,6 +42,7 @@ User taps a notification ("Statement partially classified — tap to continue") 
 - **7-day timeout elapsed before user returns**: See slice `12-reupload-partial-statement.md`. The partial path has already fired; classified rows are already transactions. The user must re-upload for the remaining rows.
 - **User overrides a previously auto-classified row while resuming**: Allowed. Sending a signal for a row that already has `classification_status = 'auto_classified'` overwrites it with `user_classified` and the new category. The workflow records the override.
 - **Job status is 'completed' or 'failed'**: The statement is no longer resumable. The UI shows a read-only summary instead of the classification UI.
+- **No notification when user abandons mid-classification**: When a user closes the browser or navigates away while classifying, the `StatementProcessingWorkflow` simply pauses in `awaiting_input` state. No notification is created — the notifications domain has no handler for this condition. The user must return to the Statements screen themselves to see the in-progress statement and resume classification. (The `ExtractionPartiallyCompleted` event, which does create a notification, only fires on the 7-day timeout — not on browser close.)
 
 ## Success Outcome
 The user completes classification of all remaining rows and the full statement is committed as transactions — without losing any work done in the prior session.

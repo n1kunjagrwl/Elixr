@@ -48,7 +48,7 @@ The user receives an in-app notification: "Approaching budget limit" (80%) or "B
 - **transactions**: Provides the drill-down transaction list; processes edits.
 
 ## Edge Cases & Failures
-- **Alert fired but spend is now under 80%** (e.g., user deleted a transaction after the alert): The alert remains in the notification feed. `budget_progress.current_spend` has been corrected by the `TransactionUpdated` retroactive handler, but the alert notification is not retracted — it reflects a past state.
+- **Alert fired but spend is now under 80%** (e.g., user re-categorised a transaction to a different category after the alert): The alert remains in the notification feed. `budget_progress.current_spend` has been corrected by the `TransactionUpdated` retroactive handler (which subtracts the amount from the old category's goal and adds it to the new category's goal), but the alert notification is not retracted — it reflects a past state.
 - **Two 100% alerts in same period**: The `budget_alerts` deduplication check prevents this. Only one `threshold_percent = 100` row exists per goal per period. If a second `BudgetLimitBreached` would fire (e.g., due to event replay), the handler checks the existing `budget_alerts` row and skips the notification.
 - **User raises the limit above current spend after breach**: The progress bar drops below 100%. No new 80% alert fires retroactively because the handler only checks at the time of each `TransactionCategorized` event.
 

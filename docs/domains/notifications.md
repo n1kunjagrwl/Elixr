@@ -113,3 +113,10 @@ If a matching notification already exists, skip insertion — do not create a du
 **No deduplication at this layer beyond idempotency.** The events that trigger notifications are already deduplicated at their source (e.g., `budgets` ensures only one breach alert per goal per period). The idempotency check above handles re-delivery of the same event; it does not suppress intentional repeated events (e.g., a second SIP on a different date).
 
 **Notifications are never deleted, only marked read.** This gives the user a notification history. The `read_at` column is set on explicit user action (`PATCH /notifications/{id}/read` or bulk `PATCH /notifications/read-all`). Old notifications can be archived (hidden from feed after 90 days) without deletion.
+
+---
+
+## Known Gaps
+
+- No notification is created when a `StatementProcessingWorkflow` pauses in `awaiting_input` state (user abandoned mid-classification). The user must re-enter the Statements screen to resume. A future `ClassificationAbandoned` event could close this gap.
+- No notification is sent when a `sip_registrations` row is deactivated via the `AccountRemoved` event. A future `SIPRegistrationDeactivated` event published by `investments` would enable this.

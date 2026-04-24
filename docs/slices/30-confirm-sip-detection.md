@@ -38,7 +38,7 @@ User taps a "SIP payment detected" push notification or in-app notification bann
    - The `holdings` row for this instrument is optionally updated: if the user's units or cost basis has changed, a separate edit flow handles that (this slice only confirms the link, it does not auto-update holdings).
 3. The notification's `read_at` timestamp is set to now.
 4. A success toast is shown: "Linked! This ₹{amount} debit is now recorded as your {instrument_name} SIP payment."
-5. The transaction's category in the Transactions domain may be updated to "Investment — SIP" if it was uncategorised.
+5. The transaction's category in the Transactions domain may be updated to "Investments (outflow)" if it was uncategorised.
 
 ### Step 3b: Dismiss the Match
 **User action**: User taps "No, this isn't my SIP".

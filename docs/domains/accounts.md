@@ -123,23 +123,7 @@ None. Other domains reference accounts by ID only and read display metadata from
 
 ---
 
-## Statement Date Range Overlap Detection
-
-When a user uploads a new statement for an account, the `statements` domain stores the parsed `period_start` and `period_end` on the `statement_uploads` row (set during the parsing activity). Before committing the workflow's results, the system checks for any prior `statement_uploads` row for the same `account_id` with an overlapping date range:
-
-```sql
-SELECT id, period_start, period_end
-FROM statement_uploads
-WHERE account_id = :account_id
-  AND status = 'completed'
-  AND period_start <= :new_period_end
-  AND period_end   >= :new_period_start
-```
-
-If a match is found, the workflow emits an SSE warning to the frontend and creates a notification:
-*"This statement overlaps with a previously imported statement from {existing_start} to {existing_end}. Duplicate transactions will be skipped automatically."*
-
-Processing is not blocked — fingerprint deduplication in the `transactions` domain handles the actual duplicate prevention. The warning is informational only.
+Statement date-range overlap detection uses `account_id` as its grouping key but runs inside the `statements` domain's `StatementProcessingWorkflow`. See [domains/statements.md](statements.md) for details.
 
 ---
 
