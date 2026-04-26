@@ -1,0 +1,47 @@
+repos:
+  # ---------------------------------------------------------------------------
+  # General file hygiene
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: debug-statements
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+
+  # ---------------------------------------------------------------------------
+  # Ruff — linting and formatting (uses project virtualenv via uv)
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff (lint + autofix)
+        language: system
+        entry: uv run ruff check --fix
+        types: [python]
+        pass_filenames: true
+
+      - id: ruff-format
+        name: ruff (format)
+        language: system
+        entry: uv run ruff format
+        types: [python]
+        pass_filenames: true
+
+  # ---------------------------------------------------------------------------
+  # mypy — strict static type checking (uses project virtualenv via uv)
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict type check)
+        language: system
+        entry: uv run mypy src/
+        # Always run against the full src/ tree so cross-module type errors
+        # are caught even when only one file is staged.
+        pass_filenames: false
+        types: [python]

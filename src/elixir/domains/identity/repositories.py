@@ -100,6 +100,16 @@ class IdentityRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_session_by_id_and_user(self, user_id: UUID, session_id: UUID) -> Session | None:
+        """Fetch a session scoped to a specific user — used for revocation checks."""
+        result = await self._db.execute(
+            select(Session).where(
+                Session.id == session_id,
+                Session.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def get_session_by_refresh_jti(self, jti: str) -> Session | None:
         result = await self._db.execute(
             select(Session).where(Session.refresh_token_jti == jti)

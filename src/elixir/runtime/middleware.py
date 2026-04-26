@@ -7,7 +7,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from elixir.shared.exceptions import TokenExpiredError, TokenInvalidError
+from elixir.platform.security import (
+    decode_access_token,
+    TokenExpiredError as PlatformTokenExpiredError,
+    TokenInvalidError as PlatformTokenInvalidError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,12 +44,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if auth.startswith("Bearer "):
             token = auth.removeprefix("Bearer ")
             try:
-                from elixir.shared.security import decode_access_token
                 settings = request.app.state.settings
                 claims = decode_access_token(token, settings.jwt_secret)
                 request.state.user_id = UUID(claims["sub"])
                 request.state.session_id = UUID(claims["sid"])
-            except (TokenExpiredError, TokenInvalidError):
+            except (PlatformTokenExpiredError, PlatformTokenInvalidError):
                 request.state.user_id = None
                 request.state.session_id = None
         else:

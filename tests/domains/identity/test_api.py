@@ -28,8 +28,9 @@ from elixir.shared.exceptions import (
     SessionExpiredError,
     SessionRevokedError,
 )
-from elixir.shared.security import create_access_token, create_refresh_token, hash_otp
-from tests.conftest import PHONE, OTP_CODE, USER_ID, SESSION_ID, make_test_settings
+from elixir.platform.security import create_access_token, create_refresh_token
+from elixir.shared.security import hash_otp
+from tests.conftest import PHONE, OTP_CODE, USER_ID, SESSION_ID, make_test_settings, make_get_request_context_override
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -70,6 +71,10 @@ def _build_app_with_service(mock_service, settings=None):
 
     # Override the dependency so all routes use our mock service
     app.dependency_overrides[get_identity_service] = lambda: mock_service
+
+    # Bypass session-revocation DB check for authenticated endpoints (e.g. /auth/logout)
+    dep_key, override_fn = make_get_request_context_override(mock_db)
+    app.dependency_overrides[dep_key] = override_fn
 
     @app.exception_handler(ElixirError)
     async def elixir_handler(request: Request, exc: ElixirError) -> JSONResponse:

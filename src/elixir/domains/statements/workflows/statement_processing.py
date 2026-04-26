@@ -24,3 +24,7 @@ class StatementProcessingWorkflow:
         """Entry point — receives job_id and upload_id, drives the pipeline."""
         # Stub: real implementation will call parsing + classification activities
         pass
+
+
+WORKFLOWS = [StatementProcessingWorkflow]
+ACTIVITIES: list = []

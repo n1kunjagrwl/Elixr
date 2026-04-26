@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from elixir.platform.db import build_engine, build_session_factory
-from elixir.platform.storage import build_storage_client
 from elixir.platform.temporal import build_temporal_client
 from elixir.platform.clients.amfi import AMFIClient
 from elixir.platform.clients.coingecko import CoinGeckoClient
@@ -28,7 +27,14 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Elixr...")
 
     # 1. Database
-    engine = build_engine(settings.database_url)
+    engine = build_engine(
+        settings.database_url,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_recycle=settings.db_pool_recycle,
+        pool_timeout=settings.db_pool_timeout,
+        statement_timeout_ms=settings.db_statement_timeout_ms,
+    )
     session_factory = build_session_factory(engine)
     app.state.engine = engine
     app.state.session_factory = session_factory
@@ -36,7 +42,9 @@ async def lifespan(app: FastAPI):
     # 2. Temporal
     try:
         temporal_client = await build_temporal_client(
-            settings.temporal_address, settings.temporal_namespace
+            settings.temporal_address,
+            settings.temporal_namespace,
+            tls=settings.temporal_tls,
         )
         app.state.temporal_client = temporal_client
         logger.info("Connected to Temporal at %s", settings.temporal_address)
@@ -45,7 +53,8 @@ async def lifespan(app: FastAPI):
         app.state.temporal_client = None
 
     # 3. File storage
-    app.state.storage = build_storage_client(settings)
+    # Storage deferred — file upload endpoints will raise StorageUnavailableError
+    app.state.storage = None
 
     # 4. Platform clients
     app.state.twilio = TwilioClient(settings)

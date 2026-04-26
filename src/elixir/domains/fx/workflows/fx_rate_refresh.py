@@ -21,3 +21,7 @@ class FXRateRefreshWorkflow:
         # The actual fetch+upsert logic lives in FXService.refresh_rates(),
         # which is tested at the service layer (see tests/domains/fx/test_services.py).
         pass
+
+
+WORKFLOWS = [FXRateRefreshWorkflow]
+ACTIVITIES: list = []

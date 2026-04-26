@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     temporal_address: str = "localhost:7233"
     temporal_namespace: str = "default"
     temporal_task_queue: str = "elixir-main"
+    temporal_tls: bool = False
 
     # CORS
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
@@ -36,9 +37,12 @@ class Settings(BaseSettings):
     metals_api_key: str = ""
     exchangerate_api_key: str = ""
 
-    # Storage
-    storage_backend: str = "local"  # "local" | "s3"
-    storage_base_path: str = "./uploads"
+    # DB pool settings
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_recycle: int = 1800
+    db_pool_timeout: int = 30
+    db_statement_timeout_ms: int = 30000
 
     # OTP config
     otp_expiry_seconds: int = 60

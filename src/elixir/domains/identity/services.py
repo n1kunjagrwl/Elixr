@@ -16,15 +16,21 @@ from elixir.shared.exceptions import (
     RateLimitError,
     SessionExpiredError,
     SessionRevokedError,
+    TokenExpiredError,
+    TokenInvalidError,
     UserNotFoundError,
 )
-from elixir.shared.security import (
+from elixir.shared.security import generate_otp, hash_otp, verify_otp_hash
+
+# Identity domain intentionally imports from platform.security because it IS
+# the auth infrastructure owner. This is the only domain with this exception
+# to the platform import rule.
+from elixir.platform.security import (
     create_access_token,
     create_refresh_token,
     decode_refresh_token,
-    generate_otp,
-    hash_otp,
-    verify_otp_hash,
+    TokenExpiredError as PlatformTokenExpiredError,
+    TokenInvalidError as PlatformTokenInvalidError,
 )
 
 
@@ -175,7 +181,12 @@ class IdentityService:
         return _OTPVerificationResult(access_token=access_token, refresh_token=refresh_token)
 
     async def refresh_session(self, refresh_token: str) -> RefreshResponse:
-        claims = decode_refresh_token(refresh_token, self._settings.jwt_secret)
+        try:
+            claims = decode_refresh_token(refresh_token, self._settings.jwt_secret)
+        except PlatformTokenExpiredError:
+            raise TokenExpiredError("Refresh token has expired")
+        except PlatformTokenInvalidError as e:
+            raise TokenInvalidError(str(e))
         session = await self._repo.get_session_by_refresh_jti(claims["jti"])
 
         if not session:

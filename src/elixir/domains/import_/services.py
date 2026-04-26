@@ -46,6 +46,12 @@ class ImportService:
         storage_client: Any,
         temporal_client: Any,
     ) -> ImportStartResponse:
+        if storage_client is None:
+            from elixir.shared.exceptions import UnprocessableError
+            raise UnprocessableError(
+                "File storage is not configured. Import upload is currently unavailable."
+            )
+
         extension = self._infer_extension(original_filename, source_type)
         if extension not in _ALLOWED_FILE_TYPES:
             raise InvalidFileTypeError(

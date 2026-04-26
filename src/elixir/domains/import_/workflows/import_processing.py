@@ -19,3 +19,7 @@ class ImportProcessingWorkflow:
         source_type: str,
     ) -> None:
         pass
+
+
+WORKFLOWS = [ImportProcessingWorkflow]
+ACTIVITIES: list = []

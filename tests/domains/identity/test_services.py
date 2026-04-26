@@ -22,7 +22,8 @@ from elixir.shared.exceptions import (
     SessionRevokedError,
     UserNotFoundError,
 )
-from elixir.shared.security import create_refresh_token, hash_otp
+from elixir.platform.security import create_refresh_token
+from elixir.shared.security import hash_otp
 from tests.conftest import PHONE, OTP_CODE, USER_ID, SESSION_ID
 
 

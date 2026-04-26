@@ -15,8 +15,8 @@ from unittest.mock import AsyncMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import USER_ID, SESSION_ID, make_test_settings
-from elixir.shared.security import create_access_token
+from tests.conftest import USER_ID, SESSION_ID, make_test_settings, make_get_request_context_override
+from elixir.platform.security import create_access_token
 
 
 # ── App builder ────────────────────────────────────────────────────────────────
@@ -56,6 +56,9 @@ def _build_statements_app(mock_service, settings=None):
     app.include_router(statements_router, prefix="/statements")
 
     app.dependency_overrides[get_statements_service] = lambda: mock_service
+
+    dep_key, override_fn = make_get_request_context_override(mock_db)
+    app.dependency_overrides[dep_key] = override_fn
 
     @app.exception_handler(ElixirError)
     async def elixir_handler(request: Request, exc: ElixirError) -> JSONResponse:

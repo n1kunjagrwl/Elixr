@@ -1,0 +1,53 @@
+# =============================================================================
+# .dockerignore — files excluded from the Docker build context
+# =============================================================================
+# Keep the build context small to speed up image builds and avoid leaking
+# secrets or unnecessary files into the image layers.
+# =============================================================================
+
+# Python virtual environment (rebuilt inside the image by uv)
+.venv/
+
+# Python bytecode and caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local uploads and log files (mounted as volumes at runtime)
+uploads/
+logs/
+
+# Secrets — never bake environment files into the image
+.env
+.env.local
+.env.*.local
+
+# Test suite (not needed at runtime)
+tests/
+
+# Version control metadata
+.git/
+.gitignore
+
+# Documentation (keep README.md, exclude everything else)
+docs/
+*.md
+!README.md
+
+# Editor / IDE artefacts
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+
+# Node (only present if PM2 tooling is checked in)
+node_modules/
+npm-debug.log*

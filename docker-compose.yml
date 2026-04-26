@@ -1,0 +1,113 @@
+version: "3.9"
+
+# =============================================================================
+# Elixir — Docker Compose (local development + CI)
+# =============================================================================
+# Usage:
+#   docker compose up -d              # start all services
+#   docker compose up -d postgres     # start only postgres
+#   docker compose logs -f api        # tail API logs
+#   docker compose down -v            # stop and remove volumes
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: elixir
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d elixir"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Temporal (auto-setup image bundles Temporal server + UI + Cassandra/SQLite)
+  # ---------------------------------------------------------------------------
+  temporal:
+    image: temporalio/auto-setup:1.24
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Tell Temporal's auto-setup to use PostgreSQL instead of the default SQLite.
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PWD: postgres
+      POSTGRES_SEEDS: postgres
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+    ports:
+      - "7233:7233"   # Temporal frontend gRPC
+      - "8088:8088"   # Temporal Web UI
+
+  # ---------------------------------------------------------------------------
+  # Elixir API
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL to use the Docker internal hostname.
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/elixir
+      TEMPORAL_ADDRESS: temporal:7233
+      PYTHONPATH: /app/src
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount uploads directory so files persist across container restarts.
+      - ./uploads:/app/uploads
+
+  # ---------------------------------------------------------------------------
+  # Temporal worker
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["python", "-m", "elixir.platform.worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+      api:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/elixir
+      TEMPORAL_ADDRESS: temporal:7233
+      PYTHONPATH: /app/src
+    volumes:
+      - ./uploads:/app/uploads
+
+# =============================================================================
+# Named volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local

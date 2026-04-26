@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock
 
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import SESSION_ID, USER_ID, make_test_settings
-from elixir.shared.security import create_access_token
+from tests.conftest import SESSION_ID, USER_ID, make_test_settings, make_get_request_context_override
+from elixir.platform.security import create_access_token
 
 
 def _build_earnings_app(mock_service, settings=None):
@@ -41,6 +41,9 @@ def _build_earnings_app(mock_service, settings=None):
     app.add_middleware(AuthMiddleware)
     app.include_router(earnings_router, prefix="/earnings")
     app.dependency_overrides[get_earnings_service] = lambda: mock_service
+
+    dep_key, override_fn = make_get_request_context_override(mock_db)
+    app.dependency_overrides[dep_key] = override_fn
 
     @app.exception_handler(ElixirError)
     async def elixir_handler(request: Request, exc: ElixirError) -> JSONResponse:

@@ -14,3 +14,7 @@ class RecurringTransactionDetectionWorkflow:
     @workflow.run
     async def run(self) -> None:
         pass
+
+
+WORKFLOWS = [RecurringTransactionDetectionWorkflow]
+ACTIVITIES: list = []

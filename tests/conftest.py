@@ -18,8 +18,10 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+from fastapi import HTTPException, Request, status
 from elixir.shared.config import Settings
-from elixir.shared.security import create_access_token, create_refresh_token, hash_otp
+from elixir.platform.security import create_access_token, create_refresh_token
+from elixir.shared.security import hash_otp
 
 
 # ── Test Settings ─────────────────────────────────────────────────────────────
@@ -146,6 +148,38 @@ def sample_session(sample_user, test_settings):
     return session
 
 
+# ── Auth / Session Helpers ────────────────────────────────────────────────────
+
+def make_get_request_context_override(mock_db: AsyncMock | None = None):
+    """
+    Return a dependency-override callable for get_request_context that bypasses
+    the session-revocation DB check while still respecting the middleware's auth.
+
+    Unauthenticated requests (user_id=None from middleware) still receive 401.
+    """
+    from elixir.runtime.context import RequestContext
+    from elixir.runtime.dependencies import get_request_context
+
+    async def _override(request: Request):
+        user_id = getattr(request.state, "user_id", None)
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        from unittest.mock import AsyncMock as _AM
+        db = mock_db if mock_db is not None else _AM()
+        return RequestContext(
+            user_id=user_id,
+            session_id=getattr(request.state, "session_id", SESSION_ID),
+            request_id="test-request-id",
+            db=db,
+        )
+
+    return get_request_context, _override
+
+
 # ── FastAPI Test App ──────────────────────────────────────────────────────────
 
 def _make_mock_session_factory(mock_db: AsyncMock):
@@ -188,6 +222,11 @@ def app_factory(mock_twilio, mock_temporal):
         app.add_middleware(RequestLoggingMiddleware)
         app.add_middleware(AuthMiddleware)
         app.include_router(identity_router, prefix="/auth")
+
+        # Bypass session-revocation DB check; authenticated identity tests
+        # supply a real Bearer token and the middleware sets request.state.
+        dep_key, override_fn = make_get_request_context_override(mock_db)
+        app.dependency_overrides[dep_key] = override_fn
 
         @app.exception_handler(ElixirError)
         async def elixir_handler(request: Request, exc: ElixirError) -> JSONResponse:

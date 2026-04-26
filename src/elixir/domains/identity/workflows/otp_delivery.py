@@ -33,3 +33,7 @@ class OTPDeliveryWorkflow:
                 backoff_coefficient=2.0,
             ),
         )
+
+
+WORKFLOWS = [OTPDeliveryWorkflow]
+ACTIVITIES: list = []

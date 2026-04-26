@@ -47,6 +47,12 @@ class StatementsService:
         storage_client: Any,
         temporal_client: Any,
     ) -> UploadStartResponse:
+        if storage_client is None:
+            from elixir.shared.exceptions import UnprocessableError
+            raise UnprocessableError(
+                "File storage is not configured. Statement upload is currently unavailable."
+            )
+
         # Validate file type
         if file_type not in _ALLOWED_FILE_TYPES:
             raise InvalidFileTypeError(
