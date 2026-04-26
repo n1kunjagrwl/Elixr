@@ -2,12 +2,14 @@
 Integration test fixtures.
 
 These tests use a real PostgreSQL container via testcontainers.
-They are SLOW (container startup ~10s) and should be run separately from unit tests:
+They are SLOW (container startup ~10s) and require Docker to be running.
+Run separately from unit tests:
     uv run pytest tests/integration/ -v
 """
 from __future__ import annotations
 
 import asyncio
+import subprocess
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock
@@ -15,9 +17,27 @@ from unittest.mock import AsyncMock
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from testcontainers.postgres import PostgresContainer
 
 from elixir.shared.config import Settings
+
+
+def _docker_available() -> bool:
+    try:
+        result = subprocess.run(
+            ["docker", "info"],
+            capture_output=True,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+# Skip the entire integration test module when Docker is not reachable.
+if not _docker_available():
+    pytest.skip("Docker is not available — skipping integration tests", allow_module_level=True)
+
+from testcontainers.postgres import PostgresContainer
 from elixir.shared.events import EventBus
 from elixir.shared.outbox import OutboxPoller
 
