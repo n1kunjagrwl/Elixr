@@ -32,18 +32,19 @@ sync: ## Refresh Python dependencies from uv.lock
 # ── Development ───────────────────────────────────────────────────────────────
 
 dev: ## Start API + Temporal dev-server locally (Ctrl-C stops both)
-	@echo "$(BOLD)Starting Temporal dev-server in background...$(RESET)"; \
-	temporal server start-dev --headless & TPID=$$!; \
+	@temporal server start-dev --headless & TPID=$$!; \
 	cleanup() { echo ""; echo "Stopping Temporal..."; kill $$TPID 2>/dev/null || true; }; \
 	trap cleanup INT TERM EXIT; \
-	echo "$(BOLD)Starting FastAPI on :8000 (Ctrl-C to stop all)...$(RESET)"; \
+	echo ""; \
+	echo "  $(BOLD)API$(RESET)          http://localhost:8000"; \
+	echo "  $(BOLD)API docs$(RESET)     http://localhost:8000/docs"; \
+	echo "  $(BOLD)Temporal UI$(RESET)  http://localhost:8088"; \
+	echo ""; \
 	uv run uvicorn elixir.runtime.app:create_app --factory \
 		--host 0.0.0.0 --port 8000 --reload
 
 dev-all: ## Start API + Temporal + Vite client (Ctrl-C stops all)
-	@echo "$(BOLD)Starting Vite client via PM2 on :5173...$(RESET)"; \
-	pm2 start ecosystem.config.js --only elixir-client --env development; \
-	echo "$(BOLD)Starting Temporal dev-server in background...$(RESET)"; \
+	@pm2 start ecosystem.config.js --only elixir-client --env development; \
 	temporal server start-dev --headless & TPID=$$!; \
 	cleanup() { \
 		echo ""; \
@@ -52,7 +53,12 @@ dev-all: ## Start API + Temporal + Vite client (Ctrl-C stops all)
 		kill $$TPID 2>/dev/null || true; \
 	}; \
 	trap cleanup INT TERM EXIT; \
-	echo "$(BOLD)Starting FastAPI on :8000 (Ctrl-C to stop all)...$(RESET)"; \
+	echo ""; \
+	echo "  $(BOLD)Client$(RESET)       http://localhost:5173"; \
+	echo "  $(BOLD)API$(RESET)          http://localhost:8000"; \
+	echo "  $(BOLD)API docs$(RESET)     http://localhost:8000/docs"; \
+	echo "  $(BOLD)Temporal UI$(RESET)  http://localhost:8088"; \
+	echo ""; \
 	uv run uvicorn elixir.runtime.app:create_app --factory \
 		--host 0.0.0.0 --port 8000 --reload
 
@@ -71,6 +77,12 @@ client-build: ## Build frontend for production (output: client/dist/)
 
 start: ## Start server (Docker Compose) + client (Vite) via PM2
 	pm2 start ecosystem.config.js --env production
+	@echo ""
+	@echo "  $(BOLD)Client$(RESET)       http://localhost:80"
+	@echo "  $(BOLD)API$(RESET)          http://localhost:8000"
+	@echo "  $(BOLD)API docs$(RESET)     http://localhost:8000/docs"
+	@echo "  $(BOLD)Temporal UI$(RESET)  http://localhost:8088"
+	@echo ""
 
 stop: ## Stop all containers, PM2 processes, and flush logs
 	docker compose down
