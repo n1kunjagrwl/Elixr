@@ -53,6 +53,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 
 def _mount_routers(app: FastAPI) -> None:
+    from fastapi import APIRouter
+
     from elixir.domains.identity.api import router as identity_router
     from elixir.domains.accounts.api import router as accounts_router
     from elixir.domains.transactions.api import router as transactions_router
@@ -69,25 +71,31 @@ def _mount_routers(app: FastAPI) -> None:
     from elixir.domains.statements.api import router as statements_router
     from elixir.domains.import_.api import router as import_router
 
-    app.include_router(identity_router, prefix="/auth", tags=["auth"])
-    app.include_router(accounts_router, prefix="/accounts", tags=["accounts"])
-    app.include_router(
+    # All domain routes live under /api/v1 so the frontend and nginx proxy
+    # have a single stable prefix. The /health endpoint stays at root level.
+    v1 = APIRouter(prefix="/api/v1")
+
+    v1.include_router(identity_router, prefix="/auth", tags=["auth"])
+    v1.include_router(accounts_router, prefix="/accounts", tags=["accounts"])
+    v1.include_router(
         transactions_router, prefix="/transactions", tags=["transactions"]
     )
-    app.include_router(cat_router, prefix="/categories", tags=["categorization"])
-    app.include_router(
+    v1.include_router(cat_router, prefix="/categories", tags=["categorization"])
+    v1.include_router(
         cat_rules_router, prefix="/categorization-rules", tags=["categorization"]
     )
-    app.include_router(investments_router, prefix="/investments", tags=["investments"])
-    app.include_router(earnings_router, prefix="/earnings", tags=["earnings"])
-    app.include_router(budgets_router, prefix="/budgets", tags=["budgets"])
-    app.include_router(peers_router, prefix="/peers", tags=["peers"])
-    app.include_router(
+    v1.include_router(investments_router, prefix="/investments", tags=["investments"])
+    v1.include_router(earnings_router, prefix="/earnings", tags=["earnings"])
+    v1.include_router(budgets_router, prefix="/budgets", tags=["budgets"])
+    v1.include_router(peers_router, prefix="/peers", tags=["peers"])
+    v1.include_router(
         notifications_router, prefix="/notifications", tags=["notifications"]
     )
-    app.include_router(fx_router, prefix="/fx", tags=["fx"])
-    app.include_router(statements_router, prefix="/statements", tags=["statements"])
-    app.include_router(import_router, prefix="/import", tags=["import"])
+    v1.include_router(fx_router, prefix="/fx", tags=["fx"])
+    v1.include_router(statements_router, prefix="/statements", tags=["statements"])
+    v1.include_router(import_router, prefix="/import", tags=["import"])
+
+    app.include_router(v1)
 
 
 def _register_exception_handlers(app: FastAPI) -> None:

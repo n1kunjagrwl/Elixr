@@ -9,7 +9,8 @@ CYAN  := \033[36m
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: help install sync dev start stop restart logs test test-integration \
+.PHONY: help install sync dev dev-all client-install client-dev client-build \
+        start stop restart logs test test-integration \
         lint typecheck migrate migrate-new shell clean
 
 help: ## Show this help
@@ -24,6 +25,7 @@ help: ## Show this help
 
 install: ## Bootstrap: install uv, PM2, Temporal CLI and all project deps
 	@bash scripts/install.sh
+	@$(MAKE) client-install
 
 sync: ## Install / refresh Python dependencies from uv.lock
 	uv sync --dev
@@ -36,6 +38,27 @@ dev: ## Start API + Temporal dev-server locally (foreground, Ctrl-C to stop)
 	@echo "$(BOLD)Starting FastAPI dev server...$(RESET)"
 	uv run uvicorn elixir.runtime.app:create_app --factory \
 		--host 0.0.0.0 --port 8000 --reload
+
+dev-all: ## Start API + Temporal + Vite client (client runs via PM2 in background)
+	@echo "$(BOLD)Starting Vite client via PM2...$(RESET)"
+	pm2 start ecosystem.config.js --only elixir-client --env development
+	@echo "$(BOLD)Starting Temporal dev-server in background...$(RESET)"
+	@temporal server start-dev --headless &
+	@echo "$(BOLD)Starting FastAPI dev server (Ctrl-C to stop all)...$(RESET)"
+	uv run uvicorn elixir.runtime.app:create_app --factory \
+		--host 0.0.0.0 --port 8000 --reload
+	@pm2 stop elixir-client 2>/dev/null || true
+
+# ── Client (frontend) ─────────────────────────────────────────────────────────
+
+client-install: ## Install frontend npm dependencies
+	npm --prefix client install
+
+client-dev: ## Start Vite dev server (frontend, port 5173)
+	npm --prefix client run dev
+
+client-build: ## Build frontend for production (output: client/dist/)
+	npm --prefix client run build
 
 # ── Production (PM2) ──────────────────────────────────────────────────────────
 
