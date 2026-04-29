@@ -10,6 +10,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Activate new service worker immediately without waiting for all tabs to close.
+      injectRegister: 'auto',
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+      },
       includeAssets: ['icons/*.png'],
       manifest: {
         name: 'Elixir — Personal Finance',
