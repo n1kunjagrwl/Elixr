@@ -72,9 +72,10 @@ client-build: ## Build frontend for production (output: client/dist/)
 start: ## Start server (Docker Compose) + client (Vite) via PM2
 	pm2 start ecosystem.config.js --env production
 
-stop: ## Stop all containers and all PM2 processes
+stop: ## Stop all containers, PM2 processes, and flush logs
 	docker compose down
 	pm2 stop elixir elixir-client 2>/dev/null || true
+	pm2 flush 2>/dev/null || true
 
 restart: ## Rebuild and restart server + client
 	docker compose down
