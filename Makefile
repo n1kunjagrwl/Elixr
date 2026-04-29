@@ -90,6 +90,7 @@ stop: ## Stop all containers, PM2 processes, and flush logs
 	pm2 flush 2>/dev/null || true
 
 restart: ## Rebuild images and restart server + client
+	docker compose down
 	docker compose build
 	pm2 delete elixir elixir-client 2>/dev/null || true
 	pm2 start ecosystem.config.js --env production
