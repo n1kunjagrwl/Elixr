@@ -69,16 +69,16 @@ client-build: ## Build frontend for production (output: client/dist/)
 
 # ── Production (PM2 + Docker Compose) ────────────────────────────────────────
 
-start: ## Start Docker Compose stack via PM2 (elixir process only)
-	pm2 start ecosystem.config.js --only elixir --env production
+start: ## Start server (Docker Compose) + client (Vite) via PM2
+	pm2 start ecosystem.config.js --env production
 
 stop: ## Stop all containers and all PM2 processes
 	docker compose down
 	pm2 stop elixir elixir-client 2>/dev/null || true
 
-restart: ## Rebuild and restart the Docker Compose stack
+restart: ## Rebuild and restart server + client
 	docker compose down
-	pm2 restart elixir 2>/dev/null || pm2 start ecosystem.config.js --only elixir --env production
+	pm2 restart elixir elixir-client 2>/dev/null || pm2 start ecosystem.config.js --env production
 
 pm2-clean: ## Remove stale PM2 processes not in ecosystem.config.js and save the list
 	@echo "Keeping only: elixir, elixir-client"
