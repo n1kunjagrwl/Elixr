@@ -80,6 +80,14 @@ restart: ## Rebuild and restart the Docker Compose stack
 	docker compose down
 	pm2 restart elixir 2>/dev/null || pm2 start ecosystem.config.js --only elixir --env production
 
+pm2-clean: ## Remove stale PM2 processes not in ecosystem.config.js and save the list
+	@echo "Keeping only: elixir, elixir-client"
+	@pm2 list --no-color 2>/dev/null \
+		| awk '/│/{print $$4}' \
+		| grep -Ev '^(elixir|elixir-client|name|$$)' \
+		| xargs -r pm2 delete 2>/dev/null || true
+	pm2 save
+
 logs: ## Tail logs — container logs when running, PM2 logs otherwise
 	@if docker compose ps -q 2>/dev/null | grep -q .; then \
 		docker compose logs --tail=50 -f; \
