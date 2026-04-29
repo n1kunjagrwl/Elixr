@@ -91,7 +91,8 @@ stop: ## Stop all containers, PM2 processes, and flush logs
 
 restart: ## Rebuild and restart server + client
 	docker compose down
-	pm2 restart elixir elixir-client 2>/dev/null || pm2 start ecosystem.config.js --env production
+	pm2 delete elixir elixir-client 2>/dev/null || true
+	pm2 start ecosystem.config.js --env production
 
 pm2-clean: ## Remove stale PM2 processes not in ecosystem.config.js and save the list
 	@echo "Keeping only: elixir, elixir-client"
