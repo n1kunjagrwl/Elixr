@@ -28,7 +28,7 @@ api.interceptors.response.use(
   async (error: unknown) => {
     const axiosError = error as {
       response?: { status: number }
-      config: { _retry?: boolean; headers: Record<string, string> }
+      config: { _retry?: boolean; url?: string; headers: Record<string, string> }
     }
     const original = axiosError.config
     const isRefreshEndpoint = original.url?.includes('/auth/refresh')
