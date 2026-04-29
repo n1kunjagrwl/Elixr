@@ -8,6 +8,11 @@ export function AuthGuard() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    // Skip network round-trip when the user just logged in (token already in memory).
+    if (useAuthStore.getState().isAuthenticated) {
+      setBootstrapping(false)
+      return
+    }
     refreshSession()
       .then(({ access_token }) => {
         setToken(access_token)

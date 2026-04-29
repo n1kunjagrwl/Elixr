@@ -55,5 +55,8 @@ class Settings(BaseSettings):
     access_token_expiry_minutes: int = 15
     refresh_token_expiry_days: int = 7
 
+    # Cookie security — set False when running over plain HTTP (local Docker, no TLS)
+    cookie_secure: bool = True
+
     # Outbox
     outbox_poll_interval_seconds: int = 2

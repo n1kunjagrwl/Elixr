@@ -31,7 +31,8 @@ api.interceptors.response.use(
       config: { _retry?: boolean; headers: Record<string, string> }
     }
     const original = axiosError.config
-    if (axiosError.response?.status === 401 && !original._retry) {
+    const isRefreshEndpoint = original.url?.includes('/auth/refresh')
+    if (axiosError.response?.status === 401 && !original._retry && !isRefreshEndpoint) {
       original._retry = true
       try {
         const { data } = await axios.post<{ access_token: string }>(

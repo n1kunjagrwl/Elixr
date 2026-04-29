@@ -129,10 +129,10 @@ test-all: ## Run all tests
 	uv run pytest -v
 
 test-e2e: ## Run Playwright end-to-end tests (starts Vite automatically)
-	npm --prefix client run test
+	cd client && npx playwright test
 
 test-e2e-ui: ## Open Playwright UI for interactive test runs
-	npm --prefix client run test:ui
+	cd client && npx playwright test --ui
 
 # ── Code quality ──────────────────────────────────────────────────────────────
 

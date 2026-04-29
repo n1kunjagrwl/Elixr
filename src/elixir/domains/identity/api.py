@@ -45,13 +45,14 @@ async def request_otp(body: RequestOTPBody, svc: IdentitySvc):
 
 
 @router.post("/verify-otp", response_model=VerifyOTPResponse)
-async def verify_otp(body: VerifyOTPBody, response: Response, svc: IdentitySvc):
+async def verify_otp(body: VerifyOTPBody, request: Request, response: Response, svc: IdentitySvc):
     result = await svc.verify_otp(body.phone, body.otp)
+    secure = request.app.state.settings.cookie_secure
     response.set_cookie(
         key=_REFRESH_COOKIE,
         value=result.refresh_token,
         httponly=True,
-        secure=True,
+        secure=secure,
         samesite="strict",
         max_age=_COOKIE_MAX_AGE,
     )
@@ -69,8 +70,9 @@ async def refresh(request: Request, svc: IdentitySvc):
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(ctx: RequestCtx, response: Response, svc: IdentitySvc):
+async def logout(request: Request, ctx: RequestCtx, response: Response, svc: IdentitySvc):
     await svc.logout(ctx.user_id, ctx.session_id)
+    secure = request.app.state.settings.cookie_secure
     response.delete_cookie(
-        key=_REFRESH_COOKIE, httponly=True, secure=True, samesite="strict"
+        key=_REFRESH_COOKIE, httponly=True, secure=secure, samesite="strict"
     )
