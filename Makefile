@@ -1,21 +1,20 @@
 .DEFAULT_GOAL := help
 SHELL         := /bin/bash
 
-# ── Colours ───────────────────────────────────────────────────────────────────
-BOLD  := \033[1m
-RESET := \033[0m
-GREEN := \033[32m
-CYAN  := \033[36m
+# ── Colours (tput emits real terminal escape bytes; gracefully empty if unsupported) ──
+BOLD  := $(shell tput bold 2>/dev/null || true)
+RESET := $(shell tput sgr0  2>/dev/null || true)
+CYAN  := $(shell tput setaf 6 2>/dev/null || true)
 
 # ─────────────────────────────────────────────────────────────────────────────
 
 .PHONY: help install sync dev dev-all client-install client-dev client-build \
-        start stop restart logs test test-integration \
-        lint typecheck migrate migrate-new shell clean
+        start stop restart logs test test-integration test-all \
+        lint typecheck check migrate migrate-new shell clean
 
 help: ## Show this help
 	@echo ""
-	@echo "  $(BOLD)Elixr — available targets$(RESET)"
+	@echo "  $(BOLD)Elixir — available targets$(RESET)"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-20s$(RESET) %s\n", $$1, $$2}'
@@ -27,27 +26,35 @@ install: ## Bootstrap: install uv, PM2, Temporal CLI and all project deps
 	@bash scripts/install.sh
 	@$(MAKE) client-install
 
-sync: ## Install / refresh Python dependencies from uv.lock
+sync: ## Refresh Python dependencies from uv.lock
 	uv sync --dev
 
 # ── Development ───────────────────────────────────────────────────────────────
 
-dev: ## Start API + Temporal dev-server locally (foreground, Ctrl-C to stop)
-	@echo "$(BOLD)Starting Temporal dev-server in background...$(RESET)"
-	@temporal server start-dev --headless &
-	@echo "$(BOLD)Starting FastAPI dev server...$(RESET)"
+dev: ## Start API + Temporal dev-server locally (Ctrl-C stops both)
+	@echo "$(BOLD)Starting Temporal dev-server in background...$(RESET)"; \
+	temporal server start-dev --headless & TPID=$$!; \
+	cleanup() { echo ""; echo "Stopping Temporal..."; kill $$TPID 2>/dev/null || true; }; \
+	trap cleanup INT TERM EXIT; \
+	echo "$(BOLD)Starting FastAPI on :8000 (Ctrl-C to stop all)...$(RESET)"; \
 	uv run uvicorn elixir.runtime.app:create_app --factory \
 		--host 0.0.0.0 --port 8000 --reload
 
-dev-all: ## Start API + Temporal + Vite client (client runs via PM2 in background)
-	@echo "$(BOLD)Starting Vite client via PM2...$(RESET)"
-	pm2 start ecosystem.config.js --only elixir-client --env development
-	@echo "$(BOLD)Starting Temporal dev-server in background...$(RESET)"
-	@temporal server start-dev --headless &
-	@echo "$(BOLD)Starting FastAPI dev server (Ctrl-C to stop all)...$(RESET)"
+dev-all: ## Start API + Temporal + Vite client (Ctrl-C stops all)
+	@echo "$(BOLD)Starting Vite client via PM2 on :5173...$(RESET)"; \
+	pm2 start ecosystem.config.js --only elixir-client --env development; \
+	echo "$(BOLD)Starting Temporal dev-server in background...$(RESET)"; \
+	temporal server start-dev --headless & TPID=$$!; \
+	cleanup() { \
+		echo ""; \
+		echo "Stopping Vite client and Temporal..."; \
+		pm2 stop elixir-client 2>/dev/null || true; \
+		kill $$TPID 2>/dev/null || true; \
+	}; \
+	trap cleanup INT TERM EXIT; \
+	echo "$(BOLD)Starting FastAPI on :8000 (Ctrl-C to stop all)...$(RESET)"; \
 	uv run uvicorn elixir.runtime.app:create_app --factory \
 		--host 0.0.0.0 --port 8000 --reload
-	@pm2 stop elixir-client 2>/dev/null || true
 
 # ── Client (frontend) ─────────────────────────────────────────────────────────
 
@@ -60,20 +67,20 @@ client-dev: ## Start Vite dev server (frontend, port 5173)
 client-build: ## Build frontend for production (output: client/dist/)
 	npm --prefix client run build
 
-# ── Production (PM2) ──────────────────────────────────────────────────────────
+# ── Production (PM2 + Docker Compose) ────────────────────────────────────────
 
-start: ## Start all containers with Docker Compose (via PM2)
+start: ## Start full stack via PM2 + Docker Compose
 	pm2 start ecosystem.config.js --env production
 
-stop: ## Stop all containers
+stop: ## Stop all containers and PM2 processes
 	docker compose down
 	pm2 stop elixir 2>/dev/null || true
 
-restart: ## Restart all containers
+restart: ## Rebuild and restart all containers
 	docker compose down
 	pm2 restart elixir 2>/dev/null || pm2 start ecosystem.config.js --env production
 
-logs: ## Tail Docker Compose logs (last 50 lines per service, then follow)
+logs: ## Tail Docker Compose logs (all services, follow)
 	docker compose logs --tail=50 -f
 
 # ── Database ──────────────────────────────────────────────────────────────────
@@ -81,7 +88,7 @@ logs: ## Tail Docker Compose logs (last 50 lines per service, then follow)
 migrate: ## Apply all pending Alembic migrations
 	uv run alembic upgrade head
 
-migrate-new: ## Create a new Alembic migration (usage: make migrate-new msg="your message")
+migrate-new: ## Create a new Alembic migration (usage: make migrate-new msg="description")
 	uv run alembic revision --autogenerate -m "$(msg)"
 
 # ── Testing ───────────────────────────────────────────────────────────────────
@@ -108,10 +115,10 @@ check: lint typecheck ## Run lint + typecheck together
 
 # ── Misc ──────────────────────────────────────────────────────────────────────
 
-shell: ## Open a Python shell with project on PYTHONPATH
+shell: ## Open a Python REPL with project on PYTHONPATH
 	uv run python
 
 clean: ## Remove bytecode caches and build artefacts
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	rm -rf .mypy_cache .ruff_cache dist build
+	rm -rf .mypy_cache .ruff_cache dist build client/dist
