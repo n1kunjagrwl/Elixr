@@ -12,11 +12,11 @@
  *                    Do NOT run alongside the docker stack — they conflict.
  *
  * Usage:
- *   pm2 start ecosystem.config.js                         # production stack
+ *   make start                                             # production stack (elixir only)
+ *   make stop                                             # stop both processes
  *   pm2 start ecosystem.config.js --only elixir-client    # client dev only
- *   pm2 stop elixir                                       # bring down stack
- *   pm2 logs elixir-client                                # tail client logs
- *   pm2 delete elixir-client                              # remove client process
+ *   pm2 logs elixir                                        # tail compose output
+ *   pm2 logs elixir-client                                # tail Vite output
  *
  * Prerequisites:
  *   - Docker + Docker Compose v2 (for the elixir process)
@@ -64,8 +64,14 @@ module.exports = {
       error_file: "logs/client-err.log",
       merge_logs: true,
 
+      // env_production is defined so `pm2 start --env production` doesn't warn.
+      // elixir-client is never started by `make start` (--only elixir), but
+      // PM2 validates env blocks across all entries in the file.
       env_development: {
         NODE_ENV: "development",
+      },
+      env_production: {
+        NODE_ENV: "production",
       },
     },
   ],

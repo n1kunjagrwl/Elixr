@@ -69,19 +69,24 @@ client-build: ## Build frontend for production (output: client/dist/)
 
 # ── Production (PM2 + Docker Compose) ────────────────────────────────────────
 
-start: ## Start full stack via PM2 + Docker Compose
-	pm2 start ecosystem.config.js --env production
+start: ## Start Docker Compose stack via PM2 (elixir process only)
+	pm2 start ecosystem.config.js --only elixir --env production
 
-stop: ## Stop all containers and PM2 processes
+stop: ## Stop all containers and all PM2 processes
 	docker compose down
-	pm2 stop elixir 2>/dev/null || true
+	pm2 stop elixir elixir-client 2>/dev/null || true
 
-restart: ## Rebuild and restart all containers
+restart: ## Rebuild and restart the Docker Compose stack
 	docker compose down
-	pm2 restart elixir 2>/dev/null || pm2 start ecosystem.config.js --env production
+	pm2 restart elixir 2>/dev/null || pm2 start ecosystem.config.js --only elixir --env production
 
-logs: ## Tail Docker Compose logs (all services, follow)
-	docker compose logs --tail=50 -f
+logs: ## Tail logs — container logs when running, PM2 logs otherwise
+	@if docker compose ps -q 2>/dev/null | grep -q .; then \
+		docker compose logs --tail=50 -f; \
+	else \
+		echo "No containers running. Showing PM2 logs (docker compose output):"; \
+		pm2 logs elixir --lines 100; \
+	fi
 
 # ── Database ──────────────────────────────────────────────────────────────────
 
