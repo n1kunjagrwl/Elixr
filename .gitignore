@@ -231,3 +231,8 @@ pyrightconfig.json
 .env.local
 uploads/
 
+# Frontend
+client/node_modules/
+client/dist/
+client/.vite/
+
