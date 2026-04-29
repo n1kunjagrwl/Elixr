@@ -235,4 +235,6 @@ uploads/
 client/node_modules/
 client/dist/
 client/.vite/
+client/playwright-report/
+client/test-results/
 

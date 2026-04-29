@@ -9,8 +9,8 @@ CYAN  := $(shell tput setaf 6 2>/dev/null || true)
 # ─────────────────────────────────────────────────────────────────────────────
 
 .PHONY: help install sync dev dev-all client-install client-dev client-build \
-        start stop restart logs test test-integration test-all \
-        lint typecheck check migrate migrate-new shell clean
+        start stop restart logs test test-integration test-all test-e2e test-e2e-ui \
+        lint typecheck check migrate migrate-new shell clean pm2-clean
 
 help: ## Show this help
 	@echo ""
@@ -127,6 +127,12 @@ test-integration: ## Run integration tests (requires Docker)
 
 test-all: ## Run all tests
 	uv run pytest -v
+
+test-e2e: ## Run Playwright end-to-end tests (starts Vite automatically)
+	npm --prefix client run test
+
+test-e2e-ui: ## Open Playwright UI for interactive test runs
+	npm --prefix client run test:ui
 
 # ── Code quality ──────────────────────────────────────────────────────────────
 
