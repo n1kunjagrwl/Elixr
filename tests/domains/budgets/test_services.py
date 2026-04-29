@@ -4,6 +4,7 @@ Service-layer tests for the budgets domain.
 All external dependencies (DB session, repository, fx service) are mocked.
 No real database or network connections are made.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -18,8 +19,10 @@ from tests.conftest import USER_ID
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_service(mock_db):
     from elixir.domains.budgets.services import BudgetsService
+
     return BudgetsService(db=mock_db)
 
 
@@ -53,7 +56,9 @@ def _make_goal(
     return goal
 
 
-def _make_progress(goal_id=None, period_start=None, period_end=None, current_spend=Decimal("0.00")):
+def _make_progress(
+    goal_id=None, period_start=None, period_end=None, current_spend=Decimal("0.00")
+):
     progress = MagicMock()
     progress.id = uuid.uuid4()
     progress.goal_id = goal_id or uuid.uuid4()
@@ -66,6 +71,7 @@ def _make_progress(goal_id=None, period_start=None, period_end=None, current_spe
 
 
 # ── TestCreateGoal ─────────────────────────────────────────────────────────────
+
 
 class TestCreateGoal:
     async def test_create_goal_creates_goal(self, mock_db):
@@ -81,9 +87,10 @@ class TestCreateGoal:
             period_type="monthly",
         )
 
-        with patch.object(svc._repo, "create_goal", new=AsyncMock(return_value=goal)), \
-             patch.object(svc._repo, "get_progress", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(svc._repo, "create_goal", new=AsyncMock(return_value=goal)),
+            patch.object(svc._repo, "get_progress", new=AsyncMock(return_value=None)),
+        ):
             result = await svc.create_goal(USER_ID, data)
 
         assert result.id == goal.id
@@ -106,7 +113,9 @@ class TestCreateGoal:
         with pytest.raises(InvalidPeriodConfigError):
             await svc.create_goal(USER_ID, data)
 
-    async def test_create_goal_monthly_anchor_day_out_of_range_raises_422(self, mock_db):
+    async def test_create_goal_monthly_anchor_day_out_of_range_raises_422(
+        self, mock_db
+    ):
         """anchor_day outside 1-28 raises InvalidPeriodConfigError."""
         from elixir.domains.budgets.schemas import BudgetGoalCreate
         from elixir.shared.exceptions import InvalidPeriodConfigError
@@ -135,6 +144,7 @@ class TestCreateGoal:
 
 # ── TestEditGoal ───────────────────────────────────────────────────────────────
 
+
 class TestEditGoal:
     async def test_edit_goal_updates_fields(self, mock_db):
         """Happy path: editing a goal updates the limit_amount field."""
@@ -146,10 +156,11 @@ class TestEditGoal:
 
         data = BudgetGoalUpdate(limit_amount=Decimal("20000.00"))
 
-        with patch.object(svc._repo, "get_goal", new=AsyncMock(return_value=goal)), \
-             patch.object(svc._repo, "update_goal", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "get_progress", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(svc._repo, "get_goal", new=AsyncMock(return_value=goal)),
+            patch.object(svc._repo, "update_goal", new=AsyncMock(return_value=None)),
+            patch.object(svc._repo, "get_progress", new=AsyncMock(return_value=None)),
+        ):
             result = await svc.edit_goal(USER_ID, goal_id, data)
 
         assert result is not None
@@ -169,6 +180,7 @@ class TestEditGoal:
 
 # ── TestDeactivateGoal ─────────────────────────────────────────────────────────
 
+
 class TestDeactivateGoal:
     async def test_deactivate_goal_sets_is_active_false(self, mock_db):
         """Deactivating a goal sets is_active = False and commits."""
@@ -176,9 +188,12 @@ class TestDeactivateGoal:
         goal = _make_goal()
         goal_id = goal.id
 
-        with patch.object(svc._repo, "get_goal", new=AsyncMock(return_value=goal)), \
-             patch.object(svc._repo, "deactivate_goal", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(svc._repo, "get_goal", new=AsyncMock(return_value=goal)),
+            patch.object(
+                svc._repo, "deactivate_goal", new=AsyncMock(return_value=None)
+            ),
+        ):
             await svc.deactivate_goal(USER_ID, goal_id)
 
         mock_db.commit.assert_called_once()
@@ -186,15 +201,17 @@ class TestDeactivateGoal:
 
 # ── TestListGoals ──────────────────────────────────────────────────────────────
 
+
 class TestListGoals:
     async def test_list_goals_returns_goals_with_progress(self, mock_db):
         """list_goals returns a list of BudgetGoalWithProgress responses."""
         svc = _make_service(mock_db)
         goals = [_make_goal(), _make_goal()]
 
-        with patch.object(svc._repo, "list_goals", new=AsyncMock(return_value=goals)), \
-             patch.object(svc._repo, "get_progress", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(svc._repo, "list_goals", new=AsyncMock(return_value=goals)),
+            patch.object(svc._repo, "get_progress", new=AsyncMock(return_value=None)),
+        ):
             results = await svc.list_goals(USER_ID)
 
         assert len(results) == 2
@@ -202,15 +219,17 @@ class TestListGoals:
 
 # ── TestGetGoal ───────────────────────────────────────────────────────────────
 
+
 class TestGetGoal:
     async def test_get_goal_with_progress_returns_goal(self, mock_db):
         """get_goal returns a BudgetGoalWithProgress response."""
         svc = _make_service(mock_db)
         goal = _make_goal()
 
-        with patch.object(svc._repo, "get_goal", new=AsyncMock(return_value=goal)), \
-             patch.object(svc._repo, "get_progress", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(svc._repo, "get_goal", new=AsyncMock(return_value=goal)),
+            patch.object(svc._repo, "get_progress", new=AsyncMock(return_value=None)),
+        ):
             result = await svc.get_goal(USER_ID, goal.id)
 
         assert result.id == goal.id
@@ -228,9 +247,11 @@ class TestGetGoal:
 
 # ── TestResolvePeriod ─────────────────────────────────────────────────────────
 
+
 class TestResolvePeriod:
     def _get_service(self, mock_db):
         from elixir.domains.budgets.services import BudgetsService
+
         return BudgetsService(db=mock_db)
 
     async def test_resolve_period_monthly_no_anchor(self, mock_db):
@@ -286,6 +307,7 @@ class TestResolvePeriod:
 
 # ── TestHandleTransactionCategorized ─────────────────────────────────────────
 
+
 class TestHandleTransactionCategorized:
     async def test_handle_transaction_categorized_accumulates_spend(self, mock_db):
         """Matching transaction: upsert_progress is called with delta."""
@@ -296,15 +318,30 @@ class TestHandleTransactionCategorized:
         mock_fx = AsyncMock()
         mock_fx.convert = AsyncMock(return_value=Decimal("500.00"))
 
-        items = [{"category_id": str(category_id), "amount": "500.00", "currency": "INR"}]
+        items = [
+            {"category_id": str(category_id), "amount": "500.00", "currency": "INR"}
+        ]
         mock_upsert = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "find_goals_for_categories", new=AsyncMock(return_value=[goal])), \
-             patch.object(svc._repo, "upsert_progress", new=mock_upsert), \
-             patch.object(svc._repo, "get_progress_for_period", new=AsyncMock(return_value=_make_progress(current_spend=Decimal("500.00")))), \
-             patch.object(svc._repo, "alert_exists", new=AsyncMock(return_value=False)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(
+                svc._repo,
+                "find_goals_for_categories",
+                new=AsyncMock(return_value=[goal]),
+            ),
+            patch.object(svc._repo, "upsert_progress", new=mock_upsert),
+            patch.object(
+                svc._repo,
+                "get_progress_for_period",
+                new=AsyncMock(
+                    return_value=_make_progress(current_spend=Decimal("500.00"))
+                ),
+            ),
+            patch.object(svc._repo, "alert_exists", new=AsyncMock(return_value=False)),
+            patch.object(
+                svc._repo, "add_outbox_event", new=AsyncMock(return_value=None)
+            ),
+        ):
             await svc._handle_transaction_categorized(
                 user_id=USER_ID,
                 txn_date=date(2026, 4, 15),
@@ -323,20 +360,35 @@ class TestHandleTransactionCategorized:
         mock_fx = AsyncMock()
         mock_fx.convert = AsyncMock(return_value=Decimal("500.00"))
 
-        items = [{"category_id": str(category_id), "amount": "500.00", "currency": "INR"}]
+        items = [
+            {"category_id": str(category_id), "amount": "500.00", "currency": "INR"}
+        ]
         outbox_calls = []
 
-        with patch.object(svc._repo, "find_goals_for_categories", new=AsyncMock(return_value=[goal])), \
-             patch.object(svc._repo, "upsert_progress", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "get_progress_for_period", new=AsyncMock(
-                 return_value=_make_progress(current_spend=Decimal("8500.00"))
-             )), \
-             patch.object(svc._repo, "alert_exists", new=AsyncMock(return_value=False)), \
-             patch.object(svc._repo, "insert_alert", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(
-                 side_effect=lambda et, p: outbox_calls.append((et, p))
-             )):
-
+        with (
+            patch.object(
+                svc._repo,
+                "find_goals_for_categories",
+                new=AsyncMock(return_value=[goal]),
+            ),
+            patch.object(
+                svc._repo, "upsert_progress", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo,
+                "get_progress_for_period",
+                new=AsyncMock(
+                    return_value=_make_progress(current_spend=Decimal("8500.00"))
+                ),
+            ),
+            patch.object(svc._repo, "alert_exists", new=AsyncMock(return_value=False)),
+            patch.object(svc._repo, "insert_alert", new=AsyncMock(return_value=None)),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_calls.append((et, p))),
+            ),
+        ):
             await svc._handle_transaction_categorized(
                 user_id=USER_ID,
                 txn_date=date(2026, 4, 15),
@@ -345,10 +397,14 @@ class TestHandleTransactionCategorized:
             )
 
         # Should fire 80% warning (8500 >= 8000 = 0.8 * 10000, but < 10000)
-        warning_events = [e for e, _ in outbox_calls if e == "budgets.BudgetLimitWarning"]
+        warning_events = [
+            e for e, _ in outbox_calls if e == "budgets.BudgetLimitWarning"
+        ]
         assert len(warning_events) == 1
 
-    async def test_handle_transaction_categorized_fires_100_percent_alert(self, mock_db):
+    async def test_handle_transaction_categorized_fires_100_percent_alert(
+        self, mock_db
+    ):
         """When spend reaches 100% of limit, BudgetLimitBreached is written to outbox."""
         svc = _make_service(mock_db)
         category_id = uuid.uuid4()
@@ -357,20 +413,35 @@ class TestHandleTransactionCategorized:
         mock_fx = AsyncMock()
         mock_fx.convert = AsyncMock(return_value=Decimal("500.00"))
 
-        items = [{"category_id": str(category_id), "amount": "500.00", "currency": "INR"}]
+        items = [
+            {"category_id": str(category_id), "amount": "500.00", "currency": "INR"}
+        ]
         outbox_calls = []
 
-        with patch.object(svc._repo, "find_goals_for_categories", new=AsyncMock(return_value=[goal])), \
-             patch.object(svc._repo, "upsert_progress", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "get_progress_for_period", new=AsyncMock(
-                 return_value=_make_progress(current_spend=Decimal("10500.00"))
-             )), \
-             patch.object(svc._repo, "alert_exists", new=AsyncMock(return_value=False)), \
-             patch.object(svc._repo, "insert_alert", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(
-                 side_effect=lambda et, p: outbox_calls.append((et, p))
-             )):
-
+        with (
+            patch.object(
+                svc._repo,
+                "find_goals_for_categories",
+                new=AsyncMock(return_value=[goal]),
+            ),
+            patch.object(
+                svc._repo, "upsert_progress", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo,
+                "get_progress_for_period",
+                new=AsyncMock(
+                    return_value=_make_progress(current_spend=Decimal("10500.00"))
+                ),
+            ),
+            patch.object(svc._repo, "alert_exists", new=AsyncMock(return_value=False)),
+            patch.object(svc._repo, "insert_alert", new=AsyncMock(return_value=None)),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_calls.append((et, p))),
+            ),
+        ):
             await svc._handle_transaction_categorized(
                 user_id=USER_ID,
                 txn_date=date(2026, 4, 15),
@@ -378,7 +449,9 @@ class TestHandleTransactionCategorized:
                 fx_service=mock_fx,
             )
 
-        breached_events = [e for e, _ in outbox_calls if e == "budgets.BudgetLimitBreached"]
+        breached_events = [
+            e for e, _ in outbox_calls if e == "budgets.BudgetLimitBreached"
+        ]
         assert len(breached_events) == 1
 
     async def test_handle_transaction_categorized_alert_deduplication(self, mock_db):
@@ -390,19 +463,34 @@ class TestHandleTransactionCategorized:
         mock_fx = AsyncMock()
         mock_fx.convert = AsyncMock(return_value=Decimal("500.00"))
 
-        items = [{"category_id": str(category_id), "amount": "500.00", "currency": "INR"}]
+        items = [
+            {"category_id": str(category_id), "amount": "500.00", "currency": "INR"}
+        ]
         outbox_calls = []
 
-        with patch.object(svc._repo, "find_goals_for_categories", new=AsyncMock(return_value=[goal])), \
-             patch.object(svc._repo, "upsert_progress", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "get_progress_for_period", new=AsyncMock(
-                 return_value=_make_progress(current_spend=Decimal("10500.00"))
-             )), \
-             patch.object(svc._repo, "alert_exists", new=AsyncMock(return_value=True)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(
-                 side_effect=lambda et, p: outbox_calls.append((et, p))
-             )):
-
+        with (
+            patch.object(
+                svc._repo,
+                "find_goals_for_categories",
+                new=AsyncMock(return_value=[goal]),
+            ),
+            patch.object(
+                svc._repo, "upsert_progress", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo,
+                "get_progress_for_period",
+                new=AsyncMock(
+                    return_value=_make_progress(current_spend=Decimal("10500.00"))
+                ),
+            ),
+            patch.object(svc._repo, "alert_exists", new=AsyncMock(return_value=True)),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_calls.append((et, p))),
+            ),
+        ):
             await svc._handle_transaction_categorized(
                 user_id=USER_ID,
                 txn_date=date(2026, 4, 15),
@@ -419,12 +507,17 @@ class TestHandleTransactionCategorized:
         category_id = uuid.uuid4()
 
         mock_fx = AsyncMock()
-        items = [{"category_id": str(category_id), "amount": "500.00", "currency": "INR"}]
+        items = [
+            {"category_id": str(category_id), "amount": "500.00", "currency": "INR"}
+        ]
         mock_upsert = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "find_goals_for_categories", new=AsyncMock(return_value=[])), \
-             patch.object(svc._repo, "upsert_progress", new=mock_upsert):
-
+        with (
+            patch.object(
+                svc._repo, "find_goals_for_categories", new=AsyncMock(return_value=[])
+            ),
+            patch.object(svc._repo, "upsert_progress", new=mock_upsert),
+        ):
             await svc._handle_transaction_categorized(
                 user_id=USER_ID,
                 txn_date=date(2026, 4, 15),
@@ -446,8 +539,12 @@ class TestHandleTransactionCategorized:
         mock_fx = AsyncMock()
         mock_fx.convert = AsyncMock(return_value=Decimal("500.00"))
 
-        old_items = [{"category_id": str(old_cat_id), "amount": "500.00", "currency": "INR"}]
-        new_items = [{"category_id": str(new_cat_id), "amount": "500.00", "currency": "INR"}]
+        old_items = [
+            {"category_id": str(old_cat_id), "amount": "500.00", "currency": "INR"}
+        ]
+        new_items = [
+            {"category_id": str(new_cat_id), "amount": "500.00", "currency": "INR"}
+        ]
 
         call_count = 0
 
@@ -459,15 +556,26 @@ class TestHandleTransactionCategorized:
             return [goal_new]
 
         mock_upsert = AsyncMock(return_value=None)
-        with patch.object(svc._repo, "find_goals_for_categories", new=AsyncMock(side_effect=side_effect_find)), \
-             patch.object(svc._repo, "upsert_progress", new=mock_upsert), \
-             patch.object(svc._repo, "get_progress_for_period", new=AsyncMock(
-                 return_value=_make_progress(current_spend=Decimal("500.00"))
-             )), \
-             patch.object(svc._repo, "alert_exists", new=AsyncMock(return_value=False)), \
-             patch.object(svc._repo, "insert_alert", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(
+                svc._repo,
+                "find_goals_for_categories",
+                new=AsyncMock(side_effect=side_effect_find),
+            ),
+            patch.object(svc._repo, "upsert_progress", new=mock_upsert),
+            patch.object(
+                svc._repo,
+                "get_progress_for_period",
+                new=AsyncMock(
+                    return_value=_make_progress(current_spend=Decimal("500.00"))
+                ),
+            ),
+            patch.object(svc._repo, "alert_exists", new=AsyncMock(return_value=False)),
+            patch.object(svc._repo, "insert_alert", new=AsyncMock(return_value=None)),
+            patch.object(
+                svc._repo, "add_outbox_event", new=AsyncMock(return_value=None)
+            ),
+        ):
             await svc._handle_transaction_updated(
                 user_id=USER_ID,
                 txn_date=date(2026, 4, 15),

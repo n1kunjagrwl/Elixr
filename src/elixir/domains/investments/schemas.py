@@ -9,8 +9,19 @@ from pydantic import BaseModel, ConfigDict
 
 
 _INSTRUMENT_TYPES = Literal[
-    "stock", "mf", "etf", "fd", "ppf", "bond", "nps", "sgb",
-    "crypto", "gold", "us_stock", "rd", "other"
+    "stock",
+    "mf",
+    "etf",
+    "fd",
+    "ppf",
+    "bond",
+    "nps",
+    "sgb",
+    "crypto",
+    "gold",
+    "us_stock",
+    "rd",
+    "other",
 ]
 _EXCHANGE_TYPES = Literal["NSE", "BSE", "NYSE", "NASDAQ", "MCX"]
 _DATA_SOURCE_TYPES = Literal[
@@ -21,6 +32,7 @@ _COMPOUNDING_TYPES = Literal["monthly", "quarterly", "annually", "simple"]
 
 
 # ── Instrument schemas ────────────────────────────────────────────────────────
+
 
 class InstrumentCreate(BaseModel):
     name: str
@@ -50,6 +62,7 @@ class InstrumentResponse(BaseModel):
 
 
 # ── Holding schemas ───────────────────────────────────────────────────────────
+
 
 class HoldingCreate(BaseModel):
     instrument_id: uuid.UUID
@@ -86,6 +99,7 @@ class HoldingResponse(BaseModel):
 
 # ── FD Details schemas ────────────────────────────────────────────────────────
 
+
 class FDDetailsCreate(BaseModel):
     principal: Decimal
     rate_percent: Decimal
@@ -111,6 +125,7 @@ class FDDetailsResponse(BaseModel):
 
 
 # ── SIP schemas ───────────────────────────────────────────────────────────────
+
 
 class SIPCreate(BaseModel):
     instrument_id: uuid.UUID
@@ -144,11 +159,13 @@ class SIPResponse(BaseModel):
 
 # ── SIP confirm schema ────────────────────────────────────────────────────────
 
+
 class SIPConfirmRequest(BaseModel):
     transaction_id: uuid.UUID
 
 
 # ── Portfolio history schema ───────────────────────────────────────────────────
+
 
 class PortfolioSnapshotResponse(BaseModel):
     snapshot_date: date

@@ -72,11 +72,15 @@ class InvestmentsRepository:
 
     async def list_holdings(self, user_id: uuid.UUID) -> list[Holding]:
         result = await self._db.execute(
-            select(Holding).where(Holding.user_id == user_id).order_by(Holding.created_at)
+            select(Holding)
+            .where(Holding.user_id == user_id)
+            .order_by(Holding.created_at)
         )
         return list(result.scalars().all())
 
-    async def get_holding(self, user_id: uuid.UUID, holding_id: uuid.UUID) -> Holding | None:
+    async def get_holding(
+        self, user_id: uuid.UUID, holding_id: uuid.UUID
+    ) -> Holding | None:
         result = await self._db.execute(
             select(Holding).where(
                 Holding.id == holding_id,
@@ -236,7 +240,9 @@ class InvestmentsRepository:
         )
         return list(result.scalars().all())
 
-    async def get_sip(self, user_id: uuid.UUID, sip_id: uuid.UUID) -> SIPRegistration | None:
+    async def get_sip(
+        self, user_id: uuid.UUID, sip_id: uuid.UUID
+    ) -> SIPRegistration | None:
         result = await self._db.execute(
             select(SIPRegistration).where(
                 SIPRegistration.id == sip_id,
@@ -287,7 +293,9 @@ class InvestmentsRepository:
             .values(is_active=False, updated_at=datetime.now(timezone.utc))
         )
 
-    async def list_active_sips_for_user(self, user_id: uuid.UUID) -> list[SIPRegistration]:
+    async def list_active_sips_for_user(
+        self, user_id: uuid.UUID
+    ) -> list[SIPRegistration]:
         result = await self._db.execute(
             select(SIPRegistration).where(
                 SIPRegistration.user_id == user_id,
@@ -298,9 +306,7 @@ class InvestmentsRepository:
 
     # ── Outbox ────────────────────────────────────────────────────────────────
 
-    async def add_outbox_event(
-        self, event_type: str, payload: dict[str, Any]
-    ) -> None:
+    async def add_outbox_event(self, event_type: str, payload: dict[str, Any]) -> None:
         row = InvestmentsOutbox(event_type=event_type, payload=payload)
         self._db.add(row)
 
@@ -317,7 +323,8 @@ class InvestmentsRepository:
             select(InvestmentsOutbox.id).where(
                 and_(
                     InvestmentsOutbox.event_type == event_type,
-                    InvestmentsOutbox.payload["transaction_id"].astext == transaction_id,
+                    InvestmentsOutbox.payload["transaction_id"].astext
+                    == transaction_id,
                     InvestmentsOutbox.payload["sip_registration_id"].astext == sip_id,
                 )
             )

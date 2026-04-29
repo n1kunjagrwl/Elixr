@@ -20,7 +20,10 @@ class Category(Base, IDMixin, MutableMixin):
 
     # NULL user_id means system default
     user_id: Mapped[uuid.UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=True, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -45,7 +48,10 @@ class CategorizationRule(Base, IDMixin, MutableMixin):
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     pattern: Mapped[str] = mapped_column(String(500), nullable=False)
     match_type: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -63,7 +69,11 @@ class CategorizationOutbox(Base, IDMixin, TimestampMixin):
 
     event_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False, index=True)
-    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending", nullable=False, index=True
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     attempt_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     last_error: Mapped[str | None] = mapped_column(String(1000), nullable=True)

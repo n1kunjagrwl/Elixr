@@ -5,6 +5,7 @@ Uses httpx.AsyncClient against a minimal FastAPI app with:
 - The FXService dependency overridden per test via dependency_overrides
 - Auth middleware present; authenticated endpoints require a valid Bearer token
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -13,11 +14,17 @@ from unittest.mock import AsyncMock
 
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import USER_ID, SESSION_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    USER_ID,
+    SESSION_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 from elixir.platform.security import create_access_token
 
 
 # ── App builder ────────────────────────────────────────────────────────────────
+
 
 def _build_fx_app(mock_service, settings=None):
     """
@@ -69,15 +76,22 @@ def _build_fx_app(mock_service, settings=None):
             entry = dict(err)
             if "ctx" in entry:
                 ctx = dict(entry["ctx"])
-                entry["ctx"] = {k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()}
+                entry["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()
+                }
             safe.append(entry)
         return safe
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     return app
@@ -88,8 +102,10 @@ def _make_auth_header(settings=None) -> dict[str, str]:
     if settings is None:
         settings = make_test_settings()
     token, _ = create_access_token(
-        str(USER_ID), str(SESSION_ID),
-        settings.jwt_secret, settings.access_token_expiry_minutes,
+        str(USER_ID),
+        str(SESSION_ID),
+        settings.jwt_secret,
+        settings.access_token_expiry_minutes,
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -132,6 +148,7 @@ def _make_convert_response(**overrides):
 
 # ── GET /fx/rates ──────────────────────────────────────────────────────────────
 
+
 class TestGetRates:
     async def test_get_rates_returns_200_with_list(self):
         """Authenticated GET /fx/rates → 200 with rate list."""
@@ -143,7 +160,9 @@ class TestGetRates:
         svc = _make_mock_service(list_rates=AsyncMock(return_value=rates))
         app = _build_fx_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/fx/rates", headers=_make_auth_header(settings))
 
         assert resp.status_code == 200
@@ -159,7 +178,9 @@ class TestGetRates:
         svc = _make_mock_service(list_rates=AsyncMock(return_value=[]))
         app = _build_fx_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/fx/rates", headers=_make_auth_header(settings))
 
         assert resp.status_code == 200
@@ -167,6 +188,7 @@ class TestGetRates:
 
 
 # ── GET /fx/convert ────────────────────────────────────────────────────────────
+
 
 class TestGetConvert:
     async def test_get_convert_returns_200_with_result(self):
@@ -176,7 +198,9 @@ class TestGetConvert:
         svc = _make_mock_service(convert_with_meta=AsyncMock(return_value=response_obj))
         app = _build_fx_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/fx/convert",
                 params={"amount": "100.00", "from": "USD", "to": "INR"},
@@ -201,7 +225,9 @@ class TestGetConvert:
         )
         app = _build_fx_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/fx/convert",
                 params={"amount": "100.00", "from": "USD", "to": "XYZ"},
@@ -224,7 +250,9 @@ class TestGetConvert:
         svc = _make_mock_service(convert_with_meta=AsyncMock(return_value=response_obj))
         app = _build_fx_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/fx/convert",
                 params={"amount": "100.00", "from": "INR", "to": "INR"},
@@ -241,7 +269,9 @@ class TestGetConvert:
         svc = _make_mock_service()
         app = _build_fx_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/fx/convert",
                 params={"amount": "100.00"},  # missing from and to
@@ -253,13 +283,16 @@ class TestGetConvert:
 
 # ── Auth guard ────────────────────────────────────────────────────────────────
 
+
 class TestAuthRequired:
     async def test_unauthenticated_get_rates_returns_401(self):
         """No auth header on GET /fx/rates → 401."""
         svc = _make_mock_service()
         app = _build_fx_app(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/fx/rates")
 
         assert resp.status_code == 401
@@ -269,7 +302,9 @@ class TestAuthRequired:
         svc = _make_mock_service()
         app = _build_fx_app(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/fx/convert", params={"amount": "100", "from": "USD", "to": "INR"}
             )

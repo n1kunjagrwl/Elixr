@@ -37,6 +37,7 @@ async def get_request_context(
 
     # Check session is active and not revoked
     from elixir.domains.identity.repositories import IdentityRepository
+
     repo = IdentityRepository(db)
     session = await repo.get_session_by_id_and_user(user_id, session_id)
     if session is None or session.revoked_at is not None:

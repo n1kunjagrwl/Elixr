@@ -180,7 +180,9 @@ class EarningsService:
             date_to=filters.date_to,
             source_id=filters.source_id,
         )
-        return [await self._build_earning_response(user_id, earning) for earning in earnings]
+        return [
+            await self._build_earning_response(user_id, earning) for earning in earnings
+        ]
 
     async def handle_transaction_created(self, payload: dict[str, Any]) -> None:
         transaction_type = payload.get("type")
@@ -220,8 +222,12 @@ class EarningsService:
                 user_id=user_id,
                 transaction_id=transaction_id,
                 source_id=matched_source.id if matched_source is not None else None,
-                source_type=matched_source.type if matched_source is not None else "salary",
-                source_label=matched_source.name if matched_source is not None else description,
+                source_type=matched_source.type
+                if matched_source is not None
+                else "salary",
+                source_label=matched_source.name
+                if matched_source is not None
+                else description,
                 amount=payload["amount"],
                 currency=payload["currency"],
                 date=self._parse_date(payload["date"]),

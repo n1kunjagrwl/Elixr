@@ -39,17 +39,19 @@ dev: ## Start API + Temporal dev-server locally (foreground, Ctrl-C to stop)
 
 # ── Production (PM2) ──────────────────────────────────────────────────────────
 
-start: ## Start all processes with PM2 (production)
+start: ## Start all containers with Docker Compose (via PM2)
 	pm2 start ecosystem.config.js --env production
 
-stop: ## Stop all PM2 processes
-	pm2 stop all
+stop: ## Stop all containers
+	docker compose down
+	pm2 stop elixir 2>/dev/null || true
 
-restart: ## Restart all PM2 processes
-	pm2 restart all
+restart: ## Restart all containers
+	docker compose down
+	pm2 restart elixir 2>/dev/null || pm2 start ecosystem.config.js --env production
 
-logs: ## Tail PM2 logs
-	pm2 logs
+logs: ## Tail Docker Compose logs (last 50 lines per service, then follow)
+	docker compose logs --tail=50 -f
 
 # ── Database ──────────────────────────────────────────────────────────────────
 

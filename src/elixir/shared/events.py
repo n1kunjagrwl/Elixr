@@ -27,7 +27,9 @@ class EventBus:
     def register_outbox_table(self, table_name: str) -> None:
         self._outbox_tables.append(table_name)
 
-    async def dispatch(self, event_type: str, payload: EventPayload, session: AsyncSession) -> None:
+    async def dispatch(
+        self, event_type: str, payload: EventPayload, session: AsyncSession
+    ) -> None:
         handlers = self._handlers.get(event_type, [])
         for handler in handlers:
             try:

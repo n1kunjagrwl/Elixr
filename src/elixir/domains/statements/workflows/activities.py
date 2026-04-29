@@ -4,6 +4,7 @@ Temporal activity stubs for statement processing.
 Activities are the side-effectful steps called by the workflow.
 They are retried automatically on failure by Temporal.
 """
+
 from temporalio import activity
 
 

@@ -27,6 +27,7 @@ router = APIRouter()
 
 # ── Service factory ────────────────────────────────────────────────────────────
 
+
 def get_investments_service(
     db=Depends(get_db_session),
 ) -> InvestmentsService:
@@ -37,6 +38,7 @@ InvestmentsSvc = Annotated[InvestmentsService, Depends(get_investments_service)]
 
 
 # ── Instruments ────────────────────────────────────────────────────────────────
+
 
 @router.get("/instruments", response_model=list[InstrumentResponse])
 async def get_instruments(
@@ -64,6 +66,7 @@ async def create_instrument(
 
 
 # ── Holdings ───────────────────────────────────────────────────────────────────
+
 
 @router.get("/holdings", response_model=list[HoldingResponse])
 async def get_holdings(ctx: RequestCtx, svc: InvestmentsSvc):
@@ -108,6 +111,7 @@ async def remove_holding(
 
 # ── FD Details ─────────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/holdings/{holding_id}/fd",
     response_model=FDDetailsResponse,
@@ -125,6 +129,7 @@ async def add_fd_details(
 
 # ── Portfolio History ──────────────────────────────────────────────────────────
 
+
 @router.get("/history")
 async def get_portfolio_history(
     ctx: RequestCtx,
@@ -141,6 +146,7 @@ async def get_portfolio_history(
 
 
 # ── SIP Registrations ──────────────────────────────────────────────────────────
+
 
 @router.get("/sip", response_model=list[SIPResponse])
 async def get_sips(ctx: RequestCtx, svc: InvestmentsSvc):

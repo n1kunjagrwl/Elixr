@@ -1,7 +1,7 @@
 """Temporal worker entrypoint. Run with: python -m elixir.platform.worker"""
+
 import asyncio
 import logging
-from temporalio.client import Client
 from temporalio.worker import Worker
 
 logger = logging.getLogger(__name__)
@@ -9,12 +9,17 @@ logger = logging.getLogger(__name__)
 
 async def run_worker() -> None:
     from elixir.shared.config import Settings
+
     settings = Settings()
 
     from elixir.platform.temporal import build_temporal_client
-    client = await build_temporal_client(settings.temporal_address, settings.temporal_namespace)
+
+    client = await build_temporal_client(
+        settings.temporal_address, settings.temporal_namespace
+    )
 
     from elixir.platform.db import build_engine, build_session_factory
+
     engine = build_engine(settings.database_url)
     session_factory = build_session_factory(engine)
 
@@ -36,14 +41,40 @@ def _collect_all(session_factory, settings) -> tuple[list, list]:
     workflows = []
     activities = []
 
-    # Import each domain's workflows — use try/except to be resilient to stub workflows
-    _safe_collect(workflows, activities, "elixir.domains.identity.workflows.otp_delivery")
+    # Identity: OTP delivery activities require a live TwilioClient — inject it here.
+    try:
+        from elixir.domains.identity.workflows.otp_delivery import OTPDeliveryWorkflow
+        from elixir.domains.identity.workflows.activities import OTPDeliveryActivities
+        from elixir.platform.clients.twilio import TwilioClient
+
+        twilio = TwilioClient(settings)
+        otp_activities = OTPDeliveryActivities(twilio)
+        workflows.append(OTPDeliveryWorkflow)
+        activities.append(otp_activities.send_otp_via_twilio)
+    except Exception as exc:
+        logger.warning("Could not load identity OTP workflow: %s", exc)
     _safe_collect(workflows, activities, "elixir.domains.fx.workflows.fx_rate_refresh")
-    _safe_collect(workflows, activities, "elixir.domains.statements.workflows.statement_processing")
-    _safe_collect(workflows, activities, "elixir.domains.transactions.workflows.recurring_detection")
-    _safe_collect(workflows, activities, "elixir.domains.import_.workflows.import_processing")
-    _safe_collect(workflows, activities, "elixir.domains.investments.workflows.market_price_fetch")
-    _safe_collect(workflows, activities, "elixir.domains.investments.workflows.calculated_valuation")
+    _safe_collect(
+        workflows,
+        activities,
+        "elixir.domains.statements.workflows.statement_processing",
+    )
+    _safe_collect(
+        workflows,
+        activities,
+        "elixir.domains.transactions.workflows.recurring_detection",
+    )
+    _safe_collect(
+        workflows, activities, "elixir.domains.import_.workflows.import_processing"
+    )
+    _safe_collect(
+        workflows, activities, "elixir.domains.investments.workflows.market_price_fetch"
+    )
+    _safe_collect(
+        workflows,
+        activities,
+        "elixir.domains.investments.workflows.calculated_valuation",
+    )
 
     return workflows, activities
 
@@ -51,6 +82,7 @@ def _collect_all(session_factory, settings) -> tuple[list, list]:
 def _safe_collect(workflows: list, activities: list, module_path: str) -> None:
     try:
         import importlib
+
         mod = importlib.import_module(module_path)
         if hasattr(mod, "WORKFLOWS"):
             workflows.extend(mod.WORKFLOWS)

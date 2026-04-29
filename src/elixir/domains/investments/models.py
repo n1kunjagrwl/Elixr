@@ -21,11 +21,29 @@ from elixir.shared.base import Base, IDMixin, MutableMixin, TimestampMixin
 
 
 _INSTRUMENT_TYPES = (
-    "stock", "mf", "etf", "fd", "ppf", "bond", "nps", "sgb", "crypto", "gold",
-    "us_stock", "rd", "other",
+    "stock",
+    "mf",
+    "etf",
+    "fd",
+    "ppf",
+    "bond",
+    "nps",
+    "sgb",
+    "crypto",
+    "gold",
+    "us_stock",
+    "rd",
+    "other",
 )
 _EXCHANGES = ("NSE", "BSE", "NYSE", "NASDAQ", "MCX")
-_DATA_SOURCES = ("amfi", "eodhd", "coingecko", "twelve_data", "metals_api", "calculated")
+_DATA_SOURCES = (
+    "amfi",
+    "eodhd",
+    "coingecko",
+    "twelve_data",
+    "metals_api",
+    "calculated",
+)
 _SIP_FREQUENCIES = ("monthly", "weekly", "quarterly")
 _COMPOUNDING_TYPES = ("monthly", "quarterly", "annually", "simple")
 
@@ -58,7 +76,9 @@ class Instrument(Base, IDMixin, MutableMixin):
     exchange: Mapped[str | None] = mapped_column(String(10), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
     data_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    govt_rate_percent: Mapped[Decimal | None] = mapped_column(Numeric(6, 3), nullable=True)
+    govt_rate_percent: Mapped[Decimal | None] = mapped_column(
+        Numeric(6, 3), nullable=True
+    )
 
 
 class Holding(Base, IDMixin, MutableMixin):
@@ -66,11 +86,16 @@ class Holding(Base, IDMixin, MutableMixin):
 
     __tablename__ = "holdings"
     __table_args__ = (
-        UniqueConstraint("user_id", "instrument_id", name="uq_holdings_user_instrument"),
+        UniqueConstraint(
+            "user_id", "instrument_id", name="uq_holdings_user_instrument"
+        ),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     instrument_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -78,8 +103,12 @@ class Holding(Base, IDMixin, MutableMixin):
         nullable=False,
     )
     units: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
-    avg_cost_per_unit: Mapped[Decimal | None] = mapped_column(Numeric(15, 4), nullable=True)
-    total_invested: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    avg_cost_per_unit: Mapped[Decimal | None] = mapped_column(
+        Numeric(15, 4), nullable=True
+    )
+    total_invested: Mapped[Decimal | None] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
     current_value: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     current_price: Mapped[Decimal | None] = mapped_column(Numeric(15, 4), nullable=True)
     last_valued_at: Mapped[datetime | None] = mapped_column(
@@ -99,7 +128,10 @@ class SIPRegistration(Base, IDMixin, MutableMixin):
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     instrument_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -110,7 +142,9 @@ class SIPRegistration(Base, IDMixin, MutableMixin):
     frequency: Mapped[str] = mapped_column(String(20), nullable=False)
     debit_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
     bank_account_id: Mapped[uuid.UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("bank_accounts.id", ondelete="SET NULL"),
+        nullable=True,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
@@ -120,7 +154,9 @@ class ValuationSnapshot(Base, IDMixin, TimestampMixin):
 
     __tablename__ = "valuation_snapshots"
     __table_args__ = (
-        UniqueConstraint("holding_id", "snapshot_date", name="uq_valuation_snapshots_holding_date"),
+        UniqueConstraint(
+            "holding_id", "snapshot_date", name="uq_valuation_snapshots_holding_date"
+        ),
     )
 
     holding_id: Mapped[uuid.UUID] = mapped_column(
@@ -156,7 +192,9 @@ class FDDetails(Base, IDMixin, TimestampMixin):
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     maturity_date: Mapped[date] = mapped_column(Date, nullable=False)
     compounding: Mapped[str] = mapped_column(String(20), nullable=False)
-    maturity_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    maturity_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
 
 
 class InvestmentsOutbox(Base, IDMixin, TimestampMixin):
@@ -166,7 +204,9 @@ class InvestmentsOutbox(Base, IDMixin, TimestampMixin):
 
     event_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False, index=True)
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending", nullable=False, index=True
+    )
     processed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

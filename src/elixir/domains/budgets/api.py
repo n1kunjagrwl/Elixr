@@ -16,6 +16,7 @@ router = APIRouter()
 
 # ── Service factory ────────────────────────────────────────────────────────────
 
+
 def get_budgets_service(
     db=Depends(get_db_session),
 ) -> BudgetsService:
@@ -27,13 +28,16 @@ BudgetsSvc = Annotated[BudgetsService, Depends(get_budgets_service)]
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 
+
 @router.get("", response_model=list[BudgetGoalWithProgress])
 async def get_budgets(ctx: RequestCtx, svc: BudgetsSvc):
     """List all active budget goals with current period progress."""
     return await svc.list_goals(ctx.user_id)
 
 
-@router.post("", response_model=BudgetGoalWithProgress, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=BudgetGoalWithProgress, status_code=status.HTTP_201_CREATED
+)
 async def create_budget(
     body: BudgetGoalCreate,
     ctx: RequestCtx,

@@ -15,15 +15,17 @@ from elixir.platform.security import (
 
 logger = logging.getLogger(__name__)
 
-_PUBLIC_PATHS = frozenset({
-    "/auth/request-otp",
-    "/auth/verify-otp",
-    "/auth/refresh",
-    "/health",
-    "/docs",
-    "/openapi.json",
-    "/redoc",
-})
+_PUBLIC_PATHS = frozenset(
+    {
+        "/auth/request-otp",
+        "/auth/verify-otp",
+        "/auth/refresh",
+        "/health",
+        "/docs",
+        "/openapi.json",
+        "/redoc",
+    }
+)
 
 
 class AuthMiddleware(BaseHTTPMiddleware):

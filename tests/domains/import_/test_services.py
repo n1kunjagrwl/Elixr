@@ -4,6 +4,7 @@ Service-layer tests for the import_ domain.
 All external dependencies (DB session, repository, storage, Temporal) are mocked.
 No real database, network, or file system access.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -73,14 +74,17 @@ class TestUploadFile:
         mock_temporal = AsyncMock()
         mock_temporal.start_workflow = AsyncMock(return_value=MagicMock(id="wf-123"))
 
-        with patch.object(
-            svc._repo,
-            "create_job",
-            new=AsyncMock(return_value=job),
-        ), patch.object(
-            svc._repo,
-            "update_job",
-            new=AsyncMock(return_value=None),
+        with (
+            patch.object(
+                svc._repo,
+                "create_job",
+                new=AsyncMock(return_value=job),
+            ),
+            patch.object(
+                svc._repo,
+                "update_job",
+                new=AsyncMock(return_value=None),
+            ),
         ):
             result = await svc.upload_file(
                 user_id=USER_ID,
@@ -133,9 +137,15 @@ class TestGetJobStatus:
         mappings = [_make_mapping()]
         errors = [_make_row_error()]
 
-        with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "get_column_mappings", new=AsyncMock(return_value=mappings)), \
-             patch.object(svc._repo, "get_row_errors", new=AsyncMock(return_value=errors)):
+        with (
+            patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)),
+            patch.object(
+                svc._repo, "get_column_mappings", new=AsyncMock(return_value=mappings)
+            ),
+            patch.object(
+                svc._repo, "get_row_errors", new=AsyncMock(return_value=errors)
+            ),
+        ):
             result = await svc.get_job_status(USER_ID, job.id)
 
         assert result.id == job.id
@@ -168,7 +178,9 @@ class TestListJobs:
 
 
 class TestConfirmMapping:
-    async def test_confirm_mapping_replaces_rows_updates_status_and_signals_workflow(self, mock_db):
+    async def test_confirm_mapping_replaces_rows_updates_status_and_signals_workflow(
+        self, mock_db
+    ):
         svc = _make_service(mock_db)
         job = _make_job(status="awaiting_mapping", temporal_workflow_id="wf-123")
         mock_temporal = MagicMock()
@@ -181,9 +193,15 @@ class TestConfirmMapping:
             {"source_column": "Amount", "mapped_to": "amount"},
         ]
 
-        with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "replace_column_mappings", new=AsyncMock(return_value=[])) as mock_replace, \
-             patch.object(svc._repo, "update_job", new=AsyncMock(return_value=None)) as mock_update:
+        with (
+            patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)),
+            patch.object(
+                svc._repo, "replace_column_mappings", new=AsyncMock(return_value=[])
+            ) as mock_replace,
+            patch.object(
+                svc._repo, "update_job", new=AsyncMock(return_value=None)
+            ) as mock_update,
+        ):
             await svc.confirm_mapping(USER_ID, job.id, mappings, mock_temporal)
 
         mock_replace.assert_awaited_once_with(job.id, mappings)
@@ -246,8 +264,12 @@ class TestDeleteImport:
         svc = _make_service(mock_db)
         job = _make_job(status="completed")
 
-        with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "delete_job", new=AsyncMock(return_value=None)) as mock_delete:
+        with (
+            patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)),
+            patch.object(
+                svc._repo, "delete_job", new=AsyncMock(return_value=None)
+            ) as mock_delete,
+        ):
             await svc.delete_import(USER_ID, job.id)
 
         mock_delete.assert_awaited_once_with(job.id)
@@ -258,8 +280,12 @@ class TestDeleteImport:
         svc = _make_service(mock_db)
         job = _make_job(status="failed")
 
-        with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "delete_job", new=AsyncMock(return_value=None)) as mock_delete:
+        with (
+            patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)),
+            patch.object(
+                svc._repo, "delete_job", new=AsyncMock(return_value=None)
+            ) as mock_delete,
+        ):
             await svc.delete_import(USER_ID, job.id)
 
         mock_delete.assert_awaited_once_with(job.id)

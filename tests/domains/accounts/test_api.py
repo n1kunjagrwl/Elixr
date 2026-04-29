@@ -5,20 +5,26 @@ Uses httpx.AsyncClient against a minimal FastAPI app with:
 - The AccountsService dependency overridden per test via dependency_overrides
 - Auth middleware present; authenticated endpoints require a valid Bearer token
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import USER_ID, SESSION_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    USER_ID,
+    SESSION_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 from elixir.platform.security import create_access_token
 
 
 # ── App builder ────────────────────────────────────────────────────────────────
+
 
 def _build_accounts_app(mock_service, settings=None):
     """
@@ -31,7 +37,10 @@ def _build_accounts_app(mock_service, settings=None):
     from contextlib import asynccontextmanager
     from fastapi import FastAPI, Request
     from fastapi.responses import JSONResponse
-    from elixir.domains.accounts.api import router as accounts_router, get_accounts_service
+    from elixir.domains.accounts.api import (
+        router as accounts_router,
+        get_accounts_service,
+    )
     from elixir.shared.exceptions import ElixirError
     from elixir.runtime.middleware import AuthMiddleware, RequestLoggingMiddleware
     from fastapi.exceptions import RequestValidationError
@@ -70,15 +79,22 @@ def _build_accounts_app(mock_service, settings=None):
             entry = dict(err)
             if "ctx" in entry:
                 ctx = dict(entry["ctx"])
-                entry["ctx"] = {k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()}
+                entry["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()
+                }
             safe.append(entry)
         return safe
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     return app
@@ -89,8 +105,10 @@ def _make_auth_header(settings=None) -> dict[str, str]:
     if settings is None:
         settings = make_test_settings()
     token, _ = create_access_token(
-        str(USER_ID), str(SESSION_ID),
-        settings.jwt_secret, settings.access_token_expiry_minutes,
+        str(USER_ID),
+        str(SESSION_ID),
+        settings.jwt_secret,
+        settings.access_token_expiry_minutes,
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -105,6 +123,7 @@ def _make_mock_service(**overrides):
 
 def _make_bank_account_response(**overrides):
     from elixir.domains.accounts.schemas import BankAccountResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         nickname="My SBI Savings",
@@ -121,6 +140,7 @@ def _make_bank_account_response(**overrides):
 
 def _make_credit_card_response(**overrides):
     from elixir.domains.accounts.schemas import CreditCardResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         nickname="My HDFC CC",
@@ -139,6 +159,7 @@ def _make_credit_card_response(**overrides):
 
 def _make_account_summary_response(account_kind="bank", **overrides):
     from elixir.domains.accounts.schemas import AccountSummaryResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         user_id=USER_ID,
@@ -156,6 +177,7 @@ def _make_account_summary_response(account_kind="bank", **overrides):
 
 # ── GET /accounts ──────────────────────────────────────────────────────────────
 
+
 class TestGetAccounts:
     async def test_get_accounts_returns_200_with_list(self):
         """Authenticated GET /accounts → 200 with account list."""
@@ -167,7 +189,9 @@ class TestGetAccounts:
         svc = _make_mock_service(list_accounts=AsyncMock(return_value=accounts))
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/accounts", headers=_make_auth_header(settings))
 
         assert resp.status_code == 200
@@ -180,13 +204,16 @@ class TestGetAccounts:
         svc = _make_mock_service()
         app = _build_accounts_app(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/accounts")  # no auth
 
         assert resp.status_code == 401
 
 
 # ── POST /accounts/bank ────────────────────────────────────────────────────────
+
 
 class TestPostBankAccount:
     async def test_post_bank_returns_201_with_account(self):
@@ -196,10 +223,16 @@ class TestPostBankAccount:
         svc = _make_mock_service(add_bank_account=AsyncMock(return_value=response_obj))
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/accounts/bank",
-                json={"nickname": "My SBI Savings", "bank_name": "SBI", "account_type": "savings"},
+                json={
+                    "nickname": "My SBI Savings",
+                    "bank_name": "SBI",
+                    "account_type": "savings",
+                },
                 headers=_make_auth_header(settings),
             )
 
@@ -214,10 +247,16 @@ class TestPostBankAccount:
         svc = _make_mock_service()
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/accounts/bank",
-                json={"nickname": "Test", "bank_name": "SBI", "account_type": "invalid_type"},
+                json={
+                    "nickname": "Test",
+                    "bank_name": "SBI",
+                    "account_type": "invalid_type",
+                },
                 headers=_make_auth_header(settings),
             )
 
@@ -229,7 +268,9 @@ class TestPostBankAccount:
         svc = _make_mock_service()
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/accounts/bank",
                 json={"nickname": "Test"},  # missing bank_name and account_type
@@ -241,6 +282,7 @@ class TestPostBankAccount:
 
 # ── POST /accounts/credit-cards ───────────────────────────────────────────────
 
+
 class TestPostCreditCard:
     async def test_post_credit_card_returns_201(self):
         """Valid credit card body → 201 with CreditCardResponse."""
@@ -249,10 +291,16 @@ class TestPostCreditCard:
         svc = _make_mock_service(add_credit_card=AsyncMock(return_value=response_obj))
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/accounts/credit-cards",
-                json={"nickname": "My HDFC CC", "bank_name": "HDFC", "card_network": "visa"},
+                json={
+                    "nickname": "My HDFC CC",
+                    "bank_name": "HDFC",
+                    "card_network": "visa",
+                },
                 headers=_make_auth_header(settings),
             )
 
@@ -266,7 +314,9 @@ class TestPostCreditCard:
         svc = _make_mock_service()
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/accounts/credit-cards",
                 json={
@@ -282,16 +332,21 @@ class TestPostCreditCard:
 
 # ── PATCH /accounts/bank/{id} ─────────────────────────────────────────────────
 
+
 class TestPatchBankAccount:
     async def test_patch_bank_returns_200_with_updated(self):
         """Valid partial update → 200 with updated BankAccountResponse."""
         settings = make_test_settings()
         account_id = uuid.uuid4()
-        response_obj = _make_bank_account_response(id=account_id, nickname="Updated Name")
+        response_obj = _make_bank_account_response(
+            id=account_id, nickname="Updated Name"
+        )
         svc = _make_mock_service(edit_bank_account=AsyncMock(return_value=response_obj))
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/accounts/bank/{account_id}",
                 json={"nickname": "Updated Name"},
@@ -312,7 +367,9 @@ class TestPatchBankAccount:
         )
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/accounts/bank/{uuid.uuid4()}",
                 json={"nickname": "New Name"},
@@ -325,6 +382,7 @@ class TestPatchBankAccount:
 
 # ── DELETE /accounts/bank/{id} ────────────────────────────────────────────────
 
+
 class TestDeleteBankAccount:
     async def test_delete_bank_returns_204(self):
         """Successful deactivation → 204 No Content."""
@@ -333,7 +391,9 @@ class TestDeleteBankAccount:
         app = _build_accounts_app(svc, settings)
         account_id = uuid.uuid4()
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/accounts/bank/{account_id}",
                 headers=_make_auth_header(settings),
@@ -353,7 +413,9 @@ class TestDeleteBankAccount:
         )
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/accounts/bank/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -373,7 +435,9 @@ class TestDeleteBankAccount:
         )
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/accounts/bank/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -384,6 +448,7 @@ class TestDeleteBankAccount:
 
 # ── PATCH /accounts/credit-cards/{id} ────────────────────────────────────────
 
+
 class TestPatchCreditCard:
     async def test_patch_credit_card_returns_200(self):
         """Valid partial update on credit card → 200."""
@@ -393,7 +458,9 @@ class TestPatchCreditCard:
         svc = _make_mock_service(edit_credit_card=AsyncMock(return_value=response_obj))
         app = _build_accounts_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/accounts/credit-cards/{card_id}",
                 json={"nickname": "Updated CC"},
@@ -406,6 +473,7 @@ class TestPatchCreditCard:
 
 # ── DELETE /accounts/credit-cards/{id} ────────────────────────────────────────
 
+
 class TestDeleteCreditCard:
     async def test_delete_credit_card_returns_204(self):
         """Successful deactivation of a credit card → 204."""
@@ -414,7 +482,9 @@ class TestDeleteCreditCard:
         app = _build_accounts_app(svc, settings)
         card_id = uuid.uuid4()
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/accounts/credit-cards/{card_id}",
                 headers=_make_auth_header(settings),

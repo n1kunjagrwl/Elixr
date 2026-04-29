@@ -49,7 +49,9 @@ async def lifespan(app: FastAPI):
         app.state.temporal_client = temporal_client
         logger.info("Connected to Temporal at %s", settings.temporal_address)
     except Exception:
-        logger.warning("Could not connect to Temporal — workflows disabled", exc_info=True)
+        logger.warning(
+            "Could not connect to Temporal — workflows disabled", exc_info=True
+        )
         app.state.temporal_client = None
 
     # 3. File storage
@@ -96,7 +98,15 @@ async def lifespan(app: FastAPI):
     if app.state.temporal_client:
         app.state.temporal_client.close()
 
-    for client_name in ("twilio", "amfi", "coingecko", "eodhd", "twelve_data", "metals_api", "exchangerate"):
+    for client_name in (
+        "twilio",
+        "amfi",
+        "coingecko",
+        "eodhd",
+        "twelve_data",
+        "metals_api",
+        "exchangerate",
+    ):
         client = getattr(app.state, client_name, None)
         if client and hasattr(client, "close"):
             await client.close()
@@ -123,8 +133,17 @@ def _bootstrap_domains(event_bus: EventBus) -> None:
     from elixir.domains.import_ import bootstrap as import_b
 
     for module in [
-        identity_b, accounts_b, transactions_b, cat_b, investments_b,
-        earnings_b, budgets_b, peers_b, notifications_b, fx_b,
-        statements_b, import_b,
+        identity_b,
+        accounts_b,
+        transactions_b,
+        cat_b,
+        investments_b,
+        earnings_b,
+        budgets_b,
+        peers_b,
+        notifications_b,
+        fx_b,
+        statements_b,
+        import_b,
     ]:
         module.register_event_handlers(event_bus)

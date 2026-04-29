@@ -5,6 +5,7 @@ Period resolution is service-side (not stored). The service passively reacts
 to categorised transaction events — it never queries the transactions table
 directly.
 """
+
 from __future__ import annotations
 
 import calendar
@@ -69,7 +70,9 @@ class BudgetsService:
 
         # Validate period config with merged values
         period_type = update_fields.get("period_type", goal.period_type)
-        period_anchor_day = update_fields.get("period_anchor_day", goal.period_anchor_day)
+        period_anchor_day = update_fields.get(
+            "period_anchor_day", goal.period_anchor_day
+        )
         custom_start = update_fields.get("custom_start", goal.custom_start)
         custom_end = update_fields.get("custom_end", goal.custom_end)
 
@@ -106,9 +109,7 @@ class BudgetsService:
 
     # ── Period resolution ─────────────────────────────────────────────────────
 
-    def _resolve_current_period(
-        self, goal: Any, as_of_date: date
-    ) -> tuple[date, date]:
+    def _resolve_current_period(self, goal: Any, as_of_date: date) -> tuple[date, date]:
         """
         Compute (period_start, period_end) for the period containing as_of_date.
 
@@ -253,7 +254,9 @@ class BudgetsService:
         # Reverse old spend
         if old_items:
             old_category_ids = [item["category_id"] for item in old_items]
-            old_goals = await self._repo.find_goals_for_categories(user_id, old_category_ids)
+            old_goals = await self._repo.find_goals_for_categories(
+                user_id, old_category_ids
+            )
             old_items_by_category: dict[str, list[dict[str, Any]]] = {}
             for item in old_items:
                 cid = item["category_id"]
@@ -290,7 +293,9 @@ class BudgetsService:
         # Apply new spend
         if new_items:
             new_category_ids = [item["category_id"] for item in new_items]
-            new_goals = await self._repo.find_goals_for_categories(user_id, new_category_ids)
+            new_goals = await self._repo.find_goals_for_categories(
+                user_id, new_category_ids
+            )
             new_items_by_category: dict[str, list[dict[str, Any]]] = {}
             for item in new_items:
                 cid = item["category_id"]
@@ -322,7 +327,9 @@ class BudgetsService:
                     period_end=period_end,
                     delta=delta,
                 )
-                progress = await self._repo.get_progress_for_period(goal.id, period_start)
+                progress = await self._repo.get_progress_for_period(
+                    goal.id, period_start
+                )
                 if progress is None:
                     continue
                 await self._check_and_fire_alerts(

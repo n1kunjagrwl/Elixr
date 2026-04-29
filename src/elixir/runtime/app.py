@@ -56,7 +56,10 @@ def _mount_routers(app: FastAPI) -> None:
     from elixir.domains.identity.api import router as identity_router
     from elixir.domains.accounts.api import router as accounts_router
     from elixir.domains.transactions.api import router as transactions_router
-    from elixir.domains.categorization.api import router as cat_router, rules_router as cat_rules_router
+    from elixir.domains.categorization.api import (
+        router as cat_router,
+        rules_router as cat_rules_router,
+    )
     from elixir.domains.investments.api import router as investments_router
     from elixir.domains.earnings.api import router as earnings_router
     from elixir.domains.budgets.api import router as budgets_router
@@ -66,19 +69,25 @@ def _mount_routers(app: FastAPI) -> None:
     from elixir.domains.statements.api import router as statements_router
     from elixir.domains.import_.api import router as import_router
 
-    app.include_router(identity_router,      prefix="/auth",          tags=["auth"])
-    app.include_router(accounts_router,      prefix="/accounts",      tags=["accounts"])
-    app.include_router(transactions_router,  prefix="/transactions",  tags=["transactions"])
-    app.include_router(cat_router,           prefix="/categories",           tags=["categorization"])
-    app.include_router(cat_rules_router,     prefix="/categorization-rules", tags=["categorization"])
-    app.include_router(investments_router,   prefix="/investments",   tags=["investments"])
-    app.include_router(earnings_router,      prefix="/earnings",      tags=["earnings"])
-    app.include_router(budgets_router,       prefix="/budgets",       tags=["budgets"])
-    app.include_router(peers_router,         prefix="/peers",         tags=["peers"])
-    app.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
-    app.include_router(fx_router,            prefix="/fx",            tags=["fx"])
-    app.include_router(statements_router,    prefix="/statements",    tags=["statements"])
-    app.include_router(import_router,        prefix="/import",        tags=["import"])
+    app.include_router(identity_router, prefix="/auth", tags=["auth"])
+    app.include_router(accounts_router, prefix="/accounts", tags=["accounts"])
+    app.include_router(
+        transactions_router, prefix="/transactions", tags=["transactions"]
+    )
+    app.include_router(cat_router, prefix="/categories", tags=["categorization"])
+    app.include_router(
+        cat_rules_router, prefix="/categorization-rules", tags=["categorization"]
+    )
+    app.include_router(investments_router, prefix="/investments", tags=["investments"])
+    app.include_router(earnings_router, prefix="/earnings", tags=["earnings"])
+    app.include_router(budgets_router, prefix="/budgets", tags=["budgets"])
+    app.include_router(peers_router, prefix="/peers", tags=["peers"])
+    app.include_router(
+        notifications_router, prefix="/notifications", tags=["notifications"]
+    )
+    app.include_router(fx_router, prefix="/fx", tags=["fx"])
+    app.include_router(statements_router, prefix="/statements", tags=["statements"])
+    app.include_router(import_router, prefix="/import", tags=["import"])
 
 
 def _register_exception_handlers(app: FastAPI) -> None:
@@ -89,7 +98,10 @@ def _register_exception_handlers(app: FastAPI) -> None:
                 "ElixirError %s: %s",
                 exc.error_code,
                 exc.detail,
-                extra={"request_id": getattr(request.state, "request_id", None), "context": exc.context},
+                extra={
+                    "request_id": getattr(request.state, "request_id", None),
+                    "context": exc.context,
+                },
                 exc_info=exc,
             )
         return JSONResponse(
@@ -98,7 +110,9 @@ def _register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_error_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         # Pydantic v2 ctx.error is a live Exception — convert to str for JSON serialisation.
         def _serialisable(errors: Sequence[dict[str, object]]) -> list[dict]:
             safe = []
@@ -117,11 +131,16 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     @app.exception_handler(Exception)
-    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def unhandled_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         logger.exception(
             "Unhandled exception on %s %s",
             request.method,
@@ -130,5 +149,8 @@ def _register_exception_handlers(app: FastAPI) -> None:
         )
         return JSONResponse(
             status_code=500,
-            content={"error": "INTERNAL_ERROR", "detail": "An unexpected error occurred"},
+            content={
+                "error": "INTERNAL_ERROR",
+                "detail": "An unexpected error occurred",
+            },
         )

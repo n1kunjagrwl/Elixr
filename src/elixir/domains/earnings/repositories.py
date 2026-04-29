@@ -114,10 +114,7 @@ class EarningsRepository:
 
     async def list_peer_contact_names(self, user_id: uuid.UUID) -> list[str]:
         result = await self._db.execute(
-            text(
-                "SELECT name FROM peer_contacts_public "
-                "WHERE user_id = :user_id"
-            ),
+            text("SELECT name FROM peer_contacts_public WHERE user_id = :user_id"),
             {"user_id": str(user_id)},
         )
         return [str(row[0]) for row in result.fetchall()]
@@ -195,8 +192,6 @@ class EarningsRepository:
         source.updated_at = row["updated_at"]
         return source
 
-    async def add_outbox_event(
-        self, event_type: str, payload: dict[str, Any]
-    ) -> None:
+    async def add_outbox_event(self, event_type: str, payload: dict[str, Any]) -> None:
         row = EarningsOutbox(event_type=event_type, payload=payload)
         self._db.add(row)

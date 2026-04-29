@@ -18,7 +18,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 # Copy dependency manifests first so Docker can cache the install layer.
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 
 # Install production dependencies into /app/.venv using the locked lockfile.
 # --frozen  : fail if uv.lock is out of date (guarantees reproducibility)

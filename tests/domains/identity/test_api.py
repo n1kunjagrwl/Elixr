@@ -5,19 +5,16 @@ Uses httpx.AsyncClient against a minimal FastAPI app with:
 - All external deps (DB, Twilio, Temporal) mocked
 - The IdentityService dependency overridden per test via app.dependency_overrides
 """
+
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
 from elixir.domains.identity.schemas import (
     OTPRequestedResponse,
     RefreshResponse,
-    VerifyOTPResponse,
 )
 from elixir.domains.identity.services import IdentityService, _OTPVerificationResult
 from elixir.shared.exceptions import (
@@ -29,11 +26,18 @@ from elixir.shared.exceptions import (
     SessionRevokedError,
 )
 from elixir.platform.security import create_access_token, create_refresh_token
-from elixir.shared.security import hash_otp
-from tests.conftest import PHONE, OTP_CODE, USER_ID, SESSION_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    PHONE,
+    OTP_CODE,
+    USER_ID,
+    SESSION_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _build_app_with_service(mock_service, settings=None):
     """
@@ -46,7 +50,10 @@ def _build_app_with_service(mock_service, settings=None):
     from contextlib import asynccontextmanager
     from fastapi import FastAPI, Request
     from fastapi.responses import JSONResponse
-    from elixir.domains.identity.api import router as identity_router, get_identity_service
+    from elixir.domains.identity.api import (
+        router as identity_router,
+        get_identity_service,
+    )
     from elixir.shared.exceptions import ElixirError
     from elixir.runtime.middleware import AuthMiddleware, RequestLoggingMiddleware
     from fastapi.exceptions import RequestValidationError
@@ -84,7 +91,9 @@ def _build_app_with_service(mock_service, settings=None):
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         # Pydantic v2 ctx.error is a live Exception — convert to str for JSON serialisation.
         def _serialisable(errors: list) -> list:
             safe = []
@@ -92,13 +101,19 @@ def _build_app_with_service(mock_service, settings=None):
                 entry = dict(err)
                 if "ctx" in entry:
                     ctx = dict(entry["ctx"])
-                    entry["ctx"] = {k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()}
+                    entry["ctx"] = {
+                        k: str(v) if isinstance(v, Exception) else v
+                        for k, v in ctx.items()
+                    }
                 safe.append(entry)
             return safe
 
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     return app
@@ -114,6 +129,7 @@ def _make_mock_service(**method_overrides):
 
 # ── POST /auth/request-otp ────────────────────────────────────────────────────
 
+
 class TestRequestOTPEndpoint:
     async def test_request_otp_returns_200(self):
         """Valid phone number → 200 with OTPRequestedResponse."""
@@ -122,7 +138,9 @@ class TestRequestOTPEndpoint:
         )
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post("/auth/request-otp", json={"phone": PHONE})
 
         assert resp.status_code == 200
@@ -135,7 +153,9 @@ class TestRequestOTPEndpoint:
         svc = _make_mock_service()
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post("/auth/request-otp", json={"phone": "not-a-phone"})
 
         assert resp.status_code == 422
@@ -143,11 +163,15 @@ class TestRequestOTPEndpoint:
     async def test_request_otp_rate_limited_returns_429(self):
         """Service raises RateLimitError → 429."""
         svc = _make_mock_service(
-            request_otp=AsyncMock(side_effect=RateLimitError("Too many requests", phone=PHONE))
+            request_otp=AsyncMock(
+                side_effect=RateLimitError("Too many requests", phone=PHONE)
+            )
         )
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post("/auth/request-otp", json={"phone": PHONE})
 
         assert resp.status_code == 429
@@ -156,11 +180,15 @@ class TestRequestOTPEndpoint:
     async def test_request_otp_locked_returns_429(self):
         """Service raises OTPLockedError → 429."""
         svc = _make_mock_service(
-            request_otp=AsyncMock(side_effect=OTPLockedError("Locked", locked_until="2099-01-01T00:00:00"))
+            request_otp=AsyncMock(
+                side_effect=OTPLockedError("Locked", locked_until="2099-01-01T00:00:00")
+            )
         )
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post("/auth/request-otp", json={"phone": PHONE})
 
         assert resp.status_code == 429
@@ -173,8 +201,12 @@ class TestRequestOTPEndpoint:
         )
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.post("/auth/request-otp", json={"phone": "+91 9876 543210"})
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/auth/request-otp", json={"phone": "+91 9876 543210"}
+            )
 
         assert resp.status_code == 200
         # Service should be called with normalised E.164 (no spaces)
@@ -183,28 +215,39 @@ class TestRequestOTPEndpoint:
 
 # ── POST /auth/verify-otp ─────────────────────────────────────────────────────
 
+
 class TestVerifyOTPEndpoint:
     async def test_verify_otp_returns_200_and_access_token(self):
         """Valid phone + OTP → 200, access_token in body, refresh_token in cookie."""
         settings = make_test_settings()
         access_token, _ = create_access_token(
-            str(USER_ID), str(SESSION_ID),
-            settings.jwt_secret, settings.access_token_expiry_minutes
+            str(USER_ID),
+            str(SESSION_ID),
+            settings.jwt_secret,
+            settings.access_token_expiry_minutes,
         )
         refresh_token, _ = create_refresh_token(
-            str(USER_ID), str(SESSION_ID),
-            settings.jwt_secret, settings.refresh_token_expiry_days
+            str(USER_ID),
+            str(SESSION_ID),
+            settings.jwt_secret,
+            settings.refresh_token_expiry_days,
         )
         svc = _make_mock_service(
-            verify_otp=AsyncMock(return_value=_OTPVerificationResult(
-                access_token=access_token,
-                refresh_token=refresh_token,
-            ))
+            verify_otp=AsyncMock(
+                return_value=_OTPVerificationResult(
+                    access_token=access_token,
+                    refresh_token=refresh_token,
+                )
+            )
         )
         app = _build_app_with_service(svc, settings=settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.post("/auth/verify-otp", json={"phone": PHONE, "otp": OTP_CODE})
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/auth/verify-otp", json={"phone": PHONE, "otp": OTP_CODE}
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -220,8 +263,12 @@ class TestVerifyOTPEndpoint:
         )
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.post("/auth/verify-otp", json={"phone": PHONE, "otp": "000000"})
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/auth/verify-otp", json={"phone": PHONE, "otp": "000000"}
+            )
 
         assert resp.status_code == 401
         assert resp.json()["error"] == "OTP_INVALID"
@@ -233,8 +280,12 @@ class TestVerifyOTPEndpoint:
         )
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.post("/auth/verify-otp", json={"phone": PHONE, "otp": OTP_CODE})
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/auth/verify-otp", json={"phone": PHONE, "otp": OTP_CODE}
+            )
 
         assert resp.status_code == 401
         assert resp.json()["error"] == "OTP_EXPIRED"
@@ -242,12 +293,18 @@ class TestVerifyOTPEndpoint:
     async def test_verify_otp_locked_returns_429(self):
         """Service raises OTPLockedError → 429."""
         svc = _make_mock_service(
-            verify_otp=AsyncMock(side_effect=OTPLockedError("Locked", locked_until="2099-01-01T00:00:00"))
+            verify_otp=AsyncMock(
+                side_effect=OTPLockedError("Locked", locked_until="2099-01-01T00:00:00")
+            )
         )
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.post("/auth/verify-otp", json={"phone": PHONE, "otp": OTP_CODE})
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/auth/verify-otp", json={"phone": PHONE, "otp": OTP_CODE}
+            )
 
         assert resp.status_code == 429
 
@@ -256,14 +313,22 @@ class TestVerifyOTPEndpoint:
         svc = _make_mock_service()
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             # 5-digit OTP (too short)
-            resp = await client.post("/auth/verify-otp", json={"phone": PHONE, "otp": "12345"})
+            resp = await client.post(
+                "/auth/verify-otp", json={"phone": PHONE, "otp": "12345"}
+            )
         assert resp.status_code == 422
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             # non-numeric
-            resp = await client.post("/auth/verify-otp", json={"phone": PHONE, "otp": "abcdef"})
+            resp = await client.post(
+                "/auth/verify-otp", json={"phone": PHONE, "otp": "abcdef"}
+            )
         assert resp.status_code == 422
 
     async def test_verify_otp_missing_fields_returns_422(self):
@@ -271,31 +336,42 @@ class TestVerifyOTPEndpoint:
         svc = _make_mock_service()
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post("/auth/verify-otp", json={"phone": PHONE})
         assert resp.status_code == 422
 
 
 # ── POST /auth/refresh ────────────────────────────────────────────────────────
 
+
 class TestRefreshEndpoint:
     async def test_refresh_returns_new_access_token(self):
         """Valid refresh_token cookie → 200 with new access_token."""
         settings = make_test_settings()
         new_access_token, _ = create_access_token(
-            str(USER_ID), str(SESSION_ID),
-            settings.jwt_secret, settings.access_token_expiry_minutes
+            str(USER_ID),
+            str(SESSION_ID),
+            settings.jwt_secret,
+            settings.access_token_expiry_minutes,
         )
         refresh_token, _ = create_refresh_token(
-            str(USER_ID), str(SESSION_ID),
-            settings.jwt_secret, settings.refresh_token_expiry_days
+            str(USER_ID),
+            str(SESSION_ID),
+            settings.jwt_secret,
+            settings.refresh_token_expiry_days,
         )
         svc = _make_mock_service(
-            refresh_session=AsyncMock(return_value=RefreshResponse(access_token=new_access_token))
+            refresh_session=AsyncMock(
+                return_value=RefreshResponse(access_token=new_access_token)
+            )
         )
         app = _build_app_with_service(svc, settings=settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             client.cookies.set("refresh_token", refresh_token)
             resp = await client.post("/auth/refresh")
 
@@ -309,7 +385,9 @@ class TestRefreshEndpoint:
         svc = _make_mock_service()
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post("/auth/refresh")  # no cookie
 
         assert resp.status_code == 401
@@ -318,15 +396,21 @@ class TestRefreshEndpoint:
         """Service raises SessionRevokedError → 401."""
         settings = make_test_settings()
         refresh_token, _ = create_refresh_token(
-            str(USER_ID), str(SESSION_ID),
-            settings.jwt_secret, settings.refresh_token_expiry_days
+            str(USER_ID),
+            str(SESSION_ID),
+            settings.jwt_secret,
+            settings.refresh_token_expiry_days,
         )
         svc = _make_mock_service(
-            refresh_session=AsyncMock(side_effect=SessionRevokedError("Session revoked."))
+            refresh_session=AsyncMock(
+                side_effect=SessionRevokedError("Session revoked.")
+            )
         )
         app = _build_app_with_service(svc, settings=settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             client.cookies.set("refresh_token", refresh_token)
             resp = await client.post("/auth/refresh")
 
@@ -337,15 +421,21 @@ class TestRefreshEndpoint:
         """Service raises SessionExpiredError → 401."""
         settings = make_test_settings()
         refresh_token, _ = create_refresh_token(
-            str(USER_ID), str(SESSION_ID),
-            settings.jwt_secret, settings.refresh_token_expiry_days
+            str(USER_ID),
+            str(SESSION_ID),
+            settings.jwt_secret,
+            settings.refresh_token_expiry_days,
         )
         svc = _make_mock_service(
-            refresh_session=AsyncMock(side_effect=SessionExpiredError("Session expired."))
+            refresh_session=AsyncMock(
+                side_effect=SessionExpiredError("Session expired.")
+            )
         )
         app = _build_app_with_service(svc, settings=settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             client.cookies.set("refresh_token", refresh_token)
             resp = await client.post("/auth/refresh")
 
@@ -355,11 +445,14 @@ class TestRefreshEndpoint:
 
 # ── POST /auth/logout ─────────────────────────────────────────────────────────
 
+
 class TestLogoutEndpoint:
     def _make_access_token(self, settings) -> str:
         token, _ = create_access_token(
-            str(USER_ID), str(SESSION_ID),
-            settings.jwt_secret, settings.access_token_expiry_minutes
+            str(USER_ID),
+            str(SESSION_ID),
+            settings.jwt_secret,
+            settings.access_token_expiry_minutes,
         )
         return token
 
@@ -370,7 +463,9 @@ class TestLogoutEndpoint:
         app = _build_app_with_service(svc, settings=settings)
         access_token = self._make_access_token(settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/auth/logout",
                 headers={"Authorization": f"Bearer {access_token}"},
@@ -383,7 +478,9 @@ class TestLogoutEndpoint:
         svc = _make_mock_service(logout=AsyncMock(return_value=None))
         app = _build_app_with_service(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post("/auth/logout")  # no auth header
 
         assert resp.status_code == 401
@@ -395,7 +492,9 @@ class TestLogoutEndpoint:
         app = _build_app_with_service(svc, settings=settings)
         access_token = self._make_access_token(settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             # Set a refresh cookie first
             client.cookies.set("refresh_token", "some-token")
             resp = await client.post(

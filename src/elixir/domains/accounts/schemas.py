@@ -13,6 +13,7 @@ CardNetwork = Literal["visa", "mastercard", "amex", "rupay"]
 
 # ── Bank Account schemas ───────────────────────────────────────────────────────
 
+
 class BankAccountCreate(BaseModel):
     nickname: str
     bank_name: str
@@ -44,6 +45,7 @@ class BankAccountResponse(BaseModel):
 
 
 # ── Credit Card schemas ────────────────────────────────────────────────────────
+
 
 class CreditCardCreate(BaseModel):
     nickname: str
@@ -82,6 +84,7 @@ class CreditCardResponse(BaseModel):
 
 
 # ── Account Summary schema (from user_accounts_summary view) ──────────────────
+
 
 class AccountSummaryResponse(BaseModel):
     id: uuid.UUID

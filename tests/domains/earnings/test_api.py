@@ -1,6 +1,7 @@
 """
 API-layer tests for the earnings domain.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -9,7 +10,12 @@ from unittest.mock import AsyncMock
 
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import SESSION_ID, USER_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    SESSION_ID,
+    USER_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 from elixir.platform.security import create_access_token
 
 
@@ -21,7 +27,10 @@ def _build_earnings_app(mock_service, settings=None):
     from fastapi import FastAPI, Request
     from fastapi.exceptions import RequestValidationError
     from fastapi.responses import JSONResponse
-    from elixir.domains.earnings.api import router as earnings_router, get_earnings_service
+    from elixir.domains.earnings.api import (
+        router as earnings_router,
+        get_earnings_service,
+    )
     from elixir.runtime.middleware import AuthMiddleware, RequestLoggingMiddleware
     from elixir.shared.exceptions import ElixirError
 
@@ -58,15 +67,22 @@ def _build_earnings_app(mock_service, settings=None):
             entry = dict(err)
             if "ctx" in entry:
                 ctx = dict(entry["ctx"])
-                entry["ctx"] = {k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()}
+                entry["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()
+                }
             safe.append(entry)
         return safe
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     return app
@@ -76,8 +92,10 @@ def _make_auth_header(settings=None) -> dict[str, str]:
     if settings is None:
         settings = make_test_settings()
     token, _ = create_access_token(
-        str(USER_ID), str(SESSION_ID),
-        settings.jwt_secret, settings.access_token_expiry_minutes,
+        str(USER_ID),
+        str(SESSION_ID),
+        settings.jwt_secret,
+        settings.access_token_expiry_minutes,
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -126,18 +144,28 @@ def _make_earning_response(**overrides) -> dict:
 class TestSourcesApi:
     async def test_get_sources_returns_200(self):
         settings = make_test_settings()
-        svc = _make_mock_service(list_sources=AsyncMock(return_value=[_make_source_response()]))
+        svc = _make_mock_service(
+            list_sources=AsyncMock(return_value=[_make_source_response()])
+        )
         app = _build_earnings_app(svc, settings)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.get("/earnings/sources", headers=_make_auth_header(settings))
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                "/earnings/sources", headers=_make_auth_header(settings)
+            )
         assert resp.status_code == 200
         assert len(resp.json()) == 1
 
     async def test_post_source_returns_201(self):
         settings = make_test_settings()
-        svc = _make_mock_service(add_source=AsyncMock(return_value=_make_source_response()))
+        svc = _make_mock_service(
+            add_source=AsyncMock(return_value=_make_source_response())
+        )
         app = _build_earnings_app(svc, settings)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/earnings/sources",
                 json={"name": "Think41 Salary", "type": "salary"},
@@ -148,9 +176,15 @@ class TestSourcesApi:
     async def test_patch_source_returns_200(self):
         settings = make_test_settings()
         source_id = uuid.uuid4()
-        svc = _make_mock_service(edit_source=AsyncMock(return_value=_make_source_response(id=str(source_id), name="Renamed")))
+        svc = _make_mock_service(
+            edit_source=AsyncMock(
+                return_value=_make_source_response(id=str(source_id), name="Renamed")
+            )
+        )
         app = _build_earnings_app(svc, settings)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/earnings/sources/{source_id}",
                 json={"name": "Renamed"},
@@ -164,7 +198,9 @@ class TestSourcesApi:
         source_id = uuid.uuid4()
         svc = _make_mock_service(deactivate_source=AsyncMock(return_value=None))
         app = _build_earnings_app(svc, settings)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/earnings/sources/{source_id}",
                 headers=_make_auth_header(settings),
@@ -175,18 +211,26 @@ class TestSourcesApi:
 class TestEarningsApi:
     async def test_get_earnings_returns_200(self):
         settings = make_test_settings()
-        svc = _make_mock_service(list_earnings=AsyncMock(return_value=[_make_earning_response()]))
+        svc = _make_mock_service(
+            list_earnings=AsyncMock(return_value=[_make_earning_response()])
+        )
         app = _build_earnings_app(svc, settings)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/earnings", headers=_make_auth_header(settings))
         assert resp.status_code == 200
         assert len(resp.json()) == 1
 
     async def test_post_earning_returns_201(self):
         settings = make_test_settings()
-        svc = _make_mock_service(add_manual_earning=AsyncMock(return_value=_make_earning_response()))
+        svc = _make_mock_service(
+            add_manual_earning=AsyncMock(return_value=_make_earning_response())
+        )
         app = _build_earnings_app(svc, settings)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/earnings",
                 json={
@@ -203,9 +247,15 @@ class TestEarningsApi:
     async def test_patch_earning_returns_200(self):
         settings = make_test_settings()
         earning_id = uuid.uuid4()
-        svc = _make_mock_service(edit_earning=AsyncMock(return_value=_make_earning_response(id=str(earning_id), notes="Updated")))
+        svc = _make_mock_service(
+            edit_earning=AsyncMock(
+                return_value=_make_earning_response(id=str(earning_id), notes="Updated")
+            )
+        )
         app = _build_earnings_app(svc, settings)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/earnings/{earning_id}",
                 json={"notes": "Updated"},
@@ -217,10 +267,16 @@ class TestEarningsApi:
         settings = make_test_settings()
         svc = _make_mock_service(classify_transaction=AsyncMock(return_value=None))
         app = _build_earnings_app(svc, settings)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/earnings/classify/{uuid.uuid4()}",
-                json={"classification": "income", "source_type": "salary", "source_label": "Think41 Salary"},
+                json={
+                    "classification": "income",
+                    "source_type": "salary",
+                    "source_label": "Think41 Salary",
+                },
                 headers=_make_auth_header(settings),
             )
         assert resp.status_code == 200
@@ -228,6 +284,8 @@ class TestEarningsApi:
     async def test_unauthenticated_returns_401(self):
         svc = _make_mock_service()
         app = _build_earnings_app(svc)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/earnings")
         assert resp.status_code == 401

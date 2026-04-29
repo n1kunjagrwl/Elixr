@@ -103,15 +103,11 @@ class CategorizationService:
         rules = await self._repo.get_rules_for_user(user_id)
         return [RuleResponse.model_validate(r) for r in rules]
 
-    async def create_rule(
-        self, user_id: uuid.UUID, data: RuleCreate
-    ) -> RuleResponse:
+    async def create_rule(self, user_id: uuid.UUID, data: RuleCreate) -> RuleResponse:
         # Validate that the referenced category exists
         cat = await self._repo.get_category_by_id(data.category_id)
         if cat is None:
-            raise CategoryNotFoundError(
-                f"Category {data.category_id} not found."
-            )
+            raise CategoryNotFoundError(f"Category {data.category_id} not found.")
 
         # Validate regex pattern if match_type is regex
         if data.match_type == "regex":
@@ -185,7 +181,9 @@ class CategorizationService:
         """
         # Step 1: Transfer shortcut
         if transaction_type == "transfer":
-            self_transfer = await self._repo.get_default_category_by_slug("self-transfer")
+            self_transfer = await self._repo.get_default_category_by_slug(
+                "self-transfer"
+            )
             cat_id = self_transfer.id if self_transfer else None
             cat_name = self_transfer.name if self_transfer else "Self Transfer"
             return CategorySuggestion(

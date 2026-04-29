@@ -21,6 +21,7 @@ router = APIRouter()
 
 # ── Service factory ───────────────────────────────────────────────────────────
 
+
 def get_peers_service(
     db=Depends(get_db_session),
 ) -> PeersService:
@@ -31,6 +32,7 @@ PeersSvc = Annotated[PeersService, Depends(get_peers_service)]
 
 
 # ── Contacts ──────────────────────────────────────────────────────────────────
+
 
 @router.get("/contacts", response_model=list[PeerContactResponse])
 async def get_contacts(ctx: RequestCtx, svc: PeersSvc):
@@ -75,13 +77,12 @@ async def delete_contact(
 
 # ── Balances ──────────────────────────────────────────────────────────────────
 
+
 @router.get("/balances", response_model=list[PeerBalanceResponse])
 async def get_balances(
     ctx: RequestCtx,
     svc: PeersSvc,
-    status: Annotated[
-        Literal["open", "partial", "settled"] | None, Query()
-    ] = None,
+    status: Annotated[Literal["open", "partial", "settled"] | None, Query()] = None,
 ):
     """List peer balances for the authenticated user. Optional ?status filter."""
     return await svc.list_balances(ctx.user_id, status=status)
@@ -113,6 +114,7 @@ async def edit_balance(
 
 
 # ── Settlements ───────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/balances/{balance_id}/settlements",

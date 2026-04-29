@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 # ── Event dataclasses ─────────────────────────────────────────────────────────
 
+
 class AccountLinked:
     event_type: ClassVar[str] = "accounts.AccountLinked"
 
@@ -56,6 +57,7 @@ class AccountRemoved:
 
 
 # ── Event handlers (subscribed via bootstrap) ─────────────────────────────────
+
 
 async def handle_account_linked(payload: EventPayload, session: AsyncSession) -> None:
     """Placeholder for downstream reactions to a new account being linked."""

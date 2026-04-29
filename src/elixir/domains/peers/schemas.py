@@ -14,6 +14,7 @@ SettlementMethod = Literal["cash", "upi", "bank_transfer", "other"]
 
 # ── PeerContact schemas ────────────────────────────────────────────────────────
 
+
 class PeerContactCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     phone: str | None = Field(default=None, max_length=20)
@@ -39,6 +40,7 @@ class PeerContactResponse(BaseModel):
 
 
 # ── PeerBalance schemas ────────────────────────────────────────────────────────
+
 
 class PeerBalanceCreate(BaseModel):
     peer_id: uuid.UUID
@@ -75,6 +77,7 @@ class PeerBalanceResponse(BaseModel):
 
 
 # ── PeerSettlement schemas ─────────────────────────────────────────────────────
+
 
 class PeerSettlementCreate(BaseModel):
     amount: Decimal = Field(..., gt=0)

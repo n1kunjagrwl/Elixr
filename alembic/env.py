@@ -1,4 +1,5 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -16,6 +17,10 @@ from elixir.domains.earnings.models import Earning, EarningSource, EarningsOutbo
 config = context.config
 if config.config_file_name:
     fileConfig(config.config_file_name)
+
+# Allow DATABASE_URL env var to override alembic.ini (used in Docker / CI).
+if db_url := os.environ.get("DATABASE_URL"):
+    config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata
 

@@ -8,7 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 ImportSourceType = Literal["csv_generic", "xlsx_generic", "splitwise_csv"]
-ImportStatus = Literal["uploaded", "awaiting_mapping", "processing", "completed", "failed"]
+ImportStatus = Literal[
+    "uploaded", "awaiting_mapping", "processing", "completed", "failed"
+]
 MappingTarget = Literal[
     "date",
     "description",

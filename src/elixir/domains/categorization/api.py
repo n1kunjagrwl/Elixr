@@ -21,6 +21,7 @@ rules_router = APIRouter()
 
 # ── Service factory ───────────────────────────────────────────────────────────
 
+
 def get_categorization_service(
     request: Request,
     db=Depends(get_db_session),
@@ -31,10 +32,13 @@ def get_categorization_service(
     )
 
 
-CategorizationSvc = Annotated[CategorizationService, Depends(get_categorization_service)]
+CategorizationSvc = Annotated[
+    CategorizationService, Depends(get_categorization_service)
+]
 
 
 # ── Category Endpoints ────────────────────────────────────────────────────────
+
 
 @router.get("", response_model=list[CategoryResponse])
 async def get_categories(ctx: RequestCtx, svc: CategorizationSvc):
@@ -64,6 +68,7 @@ async def update_category(
 
 
 # ── Rules Endpoints ───────────────────────────────────────────────────────────
+
 
 @rules_router.get("", response_model=list[RuleResponse])
 async def get_rules(ctx: RequestCtx, svc: CategorizationSvc):

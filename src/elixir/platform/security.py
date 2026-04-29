@@ -5,6 +5,7 @@ Platform-level token exceptions are NOT ElixirError subclasses.
 The runtime layer translates these to domain exceptions (shared.exceptions)
 on the way out, keeping platform/ free of shared/ imports.
 """
+
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -16,6 +17,7 @@ _ISSUER = "elixir"
 
 # ── Platform-level exceptions (not ElixirError subclasses) ───────────
 # Runtime layer translates these to domain exceptions on the way out.
+
 
 class SecurityError(Exception):
     pass
@@ -30,6 +32,7 @@ class TokenInvalidError(SecurityError):
 
 
 # ── JWT ───────────────────────────────────────────────────────────────
+
 
 def create_access_token(
     user_id: str, session_id: str, secret: str, expiry_minutes: int = 15

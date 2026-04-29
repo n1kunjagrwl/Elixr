@@ -26,4 +26,6 @@ class FXRate(Base, IDMixin, TimestampMixin):
     from_currency: Mapped[str] = mapped_column(String(3), nullable=False)
     to_currency: Mapped[str] = mapped_column(String(3), nullable=False)
     rate: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
-    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

@@ -7,6 +7,7 @@ HTTP request/response cycle with real DB reads and writes. No mocking of the dat
 Run with:
     uv run pytest tests/integration/ -v
 """
+
 from __future__ import annotations
 
 import pytest
@@ -19,6 +20,7 @@ PHONE_B = "+919876543211"  # used by TestDuplicateRegistration
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 async def _do_request_otp(client: AsyncClient, phone: str) -> None:
     """POST /auth/request-otp and assert 200."""
@@ -43,6 +45,7 @@ async def _do_full_login(client: AsyncClient, app, phone: str) -> dict:
 
 # ── Test Suite ────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.integration
 class TestUserRegistrationAndLogin:
     """Full auth flow against a real PostgreSQL DB."""
@@ -55,9 +58,7 @@ class TestUserRegistrationAndLogin:
         - Return HTTP 200
         - Return a body with 'message' and 'expires_in' fields
         """
-        resp = await integration_client.post(
-            "/auth/request-otp", json={"phone": PHONE}
-        )
+        resp = await integration_client.post("/auth/request-otp", json={"phone": PHONE})
         assert resp.status_code == 200
         body = resp.json()
         assert "message" in body
@@ -117,7 +118,9 @@ class TestUserRegistrationAndLogin:
         """
         # Perform full login — sets the refresh_token cookie on the client
         await _do_full_login(integration_client, integration_app, PHONE)
-        assert "refresh_token" in integration_client.cookies, "refresh_token cookie not set"
+        assert "refresh_token" in integration_client.cookies, (
+            "refresh_token cookie not set"
+        )
 
         resp = await integration_client.post("/auth/refresh")
         assert resp.status_code == 200, f"refresh failed: {resp.text}"
@@ -148,7 +151,9 @@ class TestUserRegistrationAndLogin:
 
         # Save the refresh_token cookie value BEFORE logout clears it
         refresh_token_before_logout = integration_client.cookies.get("refresh_token")
-        assert refresh_token_before_logout is not None, "refresh_token cookie should be set after login"
+        assert refresh_token_before_logout is not None, (
+            "refresh_token cookie should be set after login"
+        )
 
         # Confirm refresh works before logout
         resp_before = await integration_client.post("/auth/refresh")

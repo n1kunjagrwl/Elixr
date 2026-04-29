@@ -50,7 +50,10 @@ class ImportRepository:
     async def update_job(self, job: ImportJob, **fields: Any) -> None:
         for key, value in fields.items():
             setattr(job, key, value)
-        if "completed_at" not in fields and fields.get("status") in {"completed", "failed"}:
+        if "completed_at" not in fields and fields.get("status") in {
+            "completed",
+            "failed",
+        }:
             job.completed_at = datetime.now(timezone.utc)
 
     async def create_column_mappings(
@@ -129,12 +132,8 @@ class ImportRepository:
         return list(result.scalars().all())
 
     async def delete_job(self, job_id: uuid.UUID) -> None:
-        await self._db.execute(
-            delete(ImportJob).where(ImportJob.id == job_id)
-        )
+        await self._db.execute(delete(ImportJob).where(ImportJob.id == job_id))
 
-    async def add_outbox_event(
-        self, event_type: str, payload: dict[str, Any]
-    ) -> None:
+    async def add_outbox_event(self, event_type: str, payload: dict[str, Any]) -> None:
         row = ImportOutbox(event_type=event_type, payload=payload)
         self._db.add(row)

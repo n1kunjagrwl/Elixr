@@ -12,6 +12,7 @@ PeriodType = Literal["monthly", "weekly", "custom"]
 
 # ── Request schemas ────────────────────────────────────────────────────────────
 
+
 class BudgetGoalCreate(BaseModel):
     category_id: uuid.UUID
     limit_amount: Decimal = Field(..., gt=0)
@@ -35,6 +36,7 @@ class BudgetGoalUpdate(BaseModel):
 
 # ── Response schemas ───────────────────────────────────────────────────────────
 
+
 class BudgetGoalResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
@@ -55,6 +57,7 @@ class BudgetGoalResponse(BaseModel):
 
 class BudgetGoalWithProgress(BudgetGoalResponse):
     """Goal response enriched with current-period spend and period bounds."""
+
     current_spend: Decimal = Decimal("0.00")
     period_start: date | None = None
     period_end: date | None = None

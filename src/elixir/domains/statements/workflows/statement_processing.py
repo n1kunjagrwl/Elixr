@@ -7,6 +7,7 @@ This workflow orchestrates the following steps:
 3. For low-confidence rows, send signals back to the frontend and await user input
 4. On completion, publish ExtractionCompleted event to trigger the transactions domain
 """
+
 from temporalio import workflow
 
 

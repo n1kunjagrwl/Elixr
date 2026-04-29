@@ -6,6 +6,7 @@ They are SLOW (container startup ~10s) and require Docker to be running.
 Run separately from unit tests:
     uv run pytest tests/integration/ -v
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -35,17 +36,20 @@ def _docker_available() -> bool:
 
 # Skip the entire integration test module when Docker is not reachable.
 if not _docker_available():
-    pytest.skip("Docker is not available — skipping integration tests", allow_module_level=True)
+    pytest.skip(
+        "Docker is not available — skipping integration tests", allow_module_level=True
+    )
 
-from testcontainers.postgres import PostgresContainer
-from elixir.shared.events import EventBus
-from elixir.shared.outbox import OutboxPoller
+from testcontainers.postgres import PostgresContainer  # noqa: E402
+from elixir.shared.events import EventBus  # noqa: E402
+from elixir.shared.outbox import OutboxPoller  # noqa: E402
 
 
 POSTGRES_IMAGE = "postgres:16-alpine"
 
 
 # ── Container (session-scoped — one container per pytest session) ──────────────
+
 
 @pytest.fixture(scope="session")
 def postgres_container():
@@ -55,6 +59,7 @@ def postgres_container():
 
 
 # ── Settings pointing at the test container ───────────────────────────────────
+
 
 @pytest.fixture(scope="session")
 def integration_settings(postgres_container: PostgresContainer) -> Settings:
@@ -86,17 +91,20 @@ def integration_settings(postgres_container: PostgresContainer) -> Settings:
         twilio_auth_token="test",
         twilio_verify_service_sid="test",
         temporal_address="localhost:7233",
-        outbox_poll_interval_seconds=9999,   # effectively disable polling in tests
-        otp_rate_limit_count=100,            # generous limit so tests don't hit it
+        outbox_poll_interval_seconds=9999,  # effectively disable polling in tests
+        otp_rate_limit_count=100,  # generous limit so tests don't hit it
         otp_rate_limit_window_minutes=60,
-        otp_expiry_seconds=300,              # 5 min expiry gives tests room to breathe
+        otp_expiry_seconds=300,  # 5 min expiry gives tests room to breathe
     )
 
 
 # ── Run Alembic migrations once before any integration test ───────────────────
 
+
 @pytest.fixture(scope="session", autouse=True)
-def run_migrations(postgres_container: PostgresContainer, integration_settings: Settings):
+def run_migrations(
+    postgres_container: PostgresContainer, integration_settings: Settings
+):
     """Run Alembic migrations against the test DB before any integration test runs.
 
     Uses the Alembic programmatic API to inject the test container URL without
@@ -117,6 +125,7 @@ def run_migrations(postgres_container: PostgresContainer, integration_settings: 
 
 
 # ── FastAPI app wired to the real DB, with external services mocked ───────────
+
 
 @pytest_asyncio.fixture
 async def integration_app(integration_settings: Settings):
@@ -187,9 +196,18 @@ async def integration_app(integration_settings: Settings):
         from elixir.domains.import_ import bootstrap as import_b
 
         for module in [
-            identity_b, accounts_b, transactions_b, cat_b, investments_b,
-            earnings_b, budgets_b, peers_b, notifications_b, fx_b,
-            statements_b, import_b,
+            identity_b,
+            accounts_b,
+            transactions_b,
+            cat_b,
+            investments_b,
+            earnings_b,
+            budgets_b,
+            peers_b,
+            notifications_b,
+            fx_b,
+            statements_b,
+            import_b,
         ]:
             module.register_event_handlers(event_bus)
 

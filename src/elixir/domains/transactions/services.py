@@ -121,7 +121,9 @@ class TransactionsService:
             )
             self._ensure_item_amounts_match(transaction.amount, resolved_items)
             await self._ensure_categories_exist(user_id, resolved_items)
-            items = await self._repo.replace_transaction_items(transaction.id, resolved_items)
+            items = await self._repo.replace_transaction_items(
+                transaction.id, resolved_items
+            )
             transaction.items = items
             new_items_payload = self._serialize_items_payload(items)
             changed_fields.append("items")
@@ -155,7 +157,9 @@ class TransactionsService:
     ) -> TransactionListResponse:
         rows = await self._repo.list_transactions(user_id, filters, page, page_size)
         items = [self._build_transaction_summary(row) for row in rows.items]
-        return PagedResponse(items=items, total=rows.total, page=rows.page, page_size=rows.page_size)
+        return PagedResponse(
+            items=items, total=rows.total, page=rows.page, page_size=rows.page_size
+        )
 
     async def get_transaction(
         self,
@@ -202,7 +206,9 @@ class TransactionsService:
             )
 
             items_payload = self._build_import_items_payload(row, currency)
-            items = await self._repo.create_transaction_items(transaction.id, items_payload)
+            items = await self._repo.create_transaction_items(
+                transaction.id, items_payload
+            )
             transaction.items = items
             await self._write_created_and_categorized_events(transaction, items)
             new_transaction_ids.append(transaction.id)
@@ -218,7 +224,9 @@ class TransactionsService:
         if not new_transaction_ids:
             return
 
-        transactions = await self._repo.get_transactions_by_ids(user_id, new_transaction_ids)
+        transactions = await self._repo.get_transactions_by_ids(
+            user_id, new_transaction_ids
+        )
         transfer_category_id = await self._repo.get_self_transfer_category_id(user_id)
         if transfer_category_id is None:
             return
@@ -287,7 +295,9 @@ class TransactionsService:
             user_id=transaction.user_id,
             items=self._serialize_items_payload(items),
         )
-        await self._repo.add_outbox_event(created_event.event_type, created_event.to_payload())
+        await self._repo.add_outbox_event(
+            created_event.event_type, created_event.to_payload()
+        )
         await self._repo.add_outbox_event(
             categorized_event.event_type,
             categorized_event.to_payload(),
@@ -325,7 +335,9 @@ class TransactionsService:
         category_ids = [item["category_id"] for item in items]
         exists = await self._repo.category_ids_exist(user_id, category_ids)
         if not exists:
-            raise CategoryNotFoundError("One or more categories are not visible to this user.")
+            raise CategoryNotFoundError(
+                "One or more categories are not visible to this user."
+            )
 
     @staticmethod
     def _normalize_items(
@@ -346,10 +358,14 @@ class TransactionsService:
         return normalized
 
     @staticmethod
-    def _ensure_item_amounts_match(amount: Decimal, items: list[dict[str, Any]]) -> None:
+    def _ensure_item_amounts_match(
+        amount: Decimal, items: list[dict[str, Any]]
+    ) -> None:
         total = sum(Decimal(str(item["amount"])) for item in items)
         if total != Decimal(str(amount)):
-            raise ItemAmountMismatchError("Item amounts must sum to transaction amount.")
+            raise ItemAmountMismatchError(
+                "Item amounts must sum to transaction amount."
+            )
 
     @staticmethod
     def compute_fingerprint(
@@ -357,7 +373,9 @@ class TransactionsService:
         txn_date: date,
         amount: Decimal,
     ) -> str:
-        normalized = ((description or "").strip().lower() + txn_date.isoformat() + str(amount))
+        normalized = (
+            (description or "").strip().lower() + txn_date.isoformat() + str(amount)
+        )
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
     def _build_import_items_payload(

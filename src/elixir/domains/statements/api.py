@@ -20,6 +20,7 @@ router = APIRouter()
 
 # ── Service factory ───────────────────────────────────────────────────────────
 
+
 def get_statements_service(
     request: Request,
     db=Depends(get_db_session),
@@ -34,6 +35,7 @@ StatementsSvc = Annotated[StatementsService, Depends(get_statements_service)]
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/upload",

@@ -4,6 +4,7 @@ Service-layer tests for the fx domain.
 All external dependencies (DB session, repository, exchangerate client) are mocked.
 No real database or network connections are made.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -14,8 +15,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _make_service(mock_db: AsyncMock):
     from elixir.domains.fx.services import FXService
@@ -44,8 +45,11 @@ def _make_fx_rate(
 
 # ── convert() tests ────────────────────────────────────────────────────────────
 
+
 class TestConvertSameCurrency:
-    async def test_convert_same_currency_returns_amount_unchanged(self, mock_db: AsyncMock):
+    async def test_convert_same_currency_returns_amount_unchanged(
+        self, mock_db: AsyncMock
+    ):
         """convert(100, 'INR', 'INR') must return 100 without touching the DB."""
         svc = _make_service(mock_db)
 
@@ -55,7 +59,9 @@ class TestConvertSameCurrency:
         assert result == Decimal("100.00")
         mock_get_rate.assert_not_called()
 
-    async def test_convert_same_non_inr_currency_returns_amount_unchanged(self, mock_db: AsyncMock):
+    async def test_convert_same_non_inr_currency_returns_amount_unchanged(
+        self, mock_db: AsyncMock
+    ):
         """convert(50, 'USD', 'USD') must return 50 without touching the DB."""
         svc = _make_service(mock_db)
 
@@ -112,7 +118,9 @@ class TestConvertTriangulation:
 
 
 class TestConvertMissingRate:
-    async def test_convert_missing_rate_raises_fx_rate_unavailable(self, mock_db: AsyncMock):
+    async def test_convert_missing_rate_raises_fx_rate_unavailable(
+        self, mock_db: AsyncMock
+    ):
         """When no rate row exists, FXRateUnavailableError must be raised."""
         from elixir.shared.exceptions import FXRateUnavailableError
 
@@ -148,7 +156,9 @@ class TestConvertStaleRate:
 
         svc = _make_service(mock_db)
         stale_fetched_at = datetime.now(timezone.utc) - timedelta(hours=25)
-        rate = _make_fx_rate("USD", "INR", Decimal("83.500000"), fetched_at=stale_fetched_at)
+        rate = _make_fx_rate(
+            "USD", "INR", Decimal("83.500000"), fetched_at=stale_fetched_at
+        )
 
         with patch.object(svc._repo, "get_rate", new=AsyncMock(return_value=rate)):
             with caplog.at_level(logging.WARNING, logger="elixir.domains.fx.services"):
@@ -166,7 +176,9 @@ class TestConvertStaleRate:
 
         svc = _make_service(mock_db)
         stale_fetched_at = datetime.now(timezone.utc) - timedelta(hours=25)
-        rate = _make_fx_rate("USD", "INR", Decimal("83.500000"), fetched_at=stale_fetched_at)
+        rate = _make_fx_rate(
+            "USD", "INR", Decimal("83.500000"), fetched_at=stale_fetched_at
+        )
 
         with patch.object(svc._repo, "get_rate", new=AsyncMock(return_value=rate)):
             with caplog.at_level(logging.WARNING, logger="elixir.domains.fx.services"):
@@ -183,6 +195,7 @@ class TestConvertStaleRate:
 
 
 # ── refresh_rates() tests ──────────────────────────────────────────────────────
+
 
 class TestRefreshRates:
     async def test_refresh_rates_upserts_rates(self, mock_db: AsyncMock):
@@ -228,6 +241,7 @@ class TestRefreshRates:
 
 # ── list_rates() tests ─────────────────────────────────────────────────────────
 
+
 class TestListRates:
     async def test_list_rates_returns_all_rates(self, mock_db: AsyncMock):
         """list_rates() delegates to the repository and returns FXRate objects."""
@@ -237,7 +251,9 @@ class TestListRates:
             _make_fx_rate("EUR", "INR", Decimal("91.0")),
         ]
 
-        with patch.object(svc._repo, "list_all_rates", new=AsyncMock(return_value=rates)):
+        with patch.object(
+            svc._repo, "list_all_rates", new=AsyncMock(return_value=rates)
+        ):
             result = await svc.list_rates()
 
         assert len(result) == 2

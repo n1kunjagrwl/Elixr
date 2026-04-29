@@ -1,6 +1,7 @@
 """
 Service-layer tests for the earnings domain.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -15,6 +16,7 @@ from tests.conftest import USER_ID
 
 def _make_service(mock_db):
     from elixir.domains.earnings.services import EarningsService
+
     return EarningsService(db=mock_db)
 
 
@@ -23,7 +25,13 @@ EARNING_ID = uuid.uuid4()
 TRANSACTION_ID = uuid.uuid4()
 
 
-def _make_source(source_id=None, user_id=None, name="Think41 Salary", source_type="salary", is_active=True):
+def _make_source(
+    source_id=None,
+    user_id=None,
+    name="Think41 Salary",
+    source_type="salary",
+    is_active=True,
+):
     source = MagicMock()
     source.id = source_id or SOURCE_ID
     source.user_id = user_id or USER_ID
@@ -66,8 +74,13 @@ def _make_earning(
 class TestSourceCrud:
     async def test_list_sources_returns_active_sources(self, mock_db):
         svc = _make_service(mock_db)
-        sources = [_make_source(), _make_source(source_id=uuid.uuid4(), name="Freelance Project")]
-        with patch.object(svc._repo, "list_sources", new=AsyncMock(return_value=sources)):
+        sources = [
+            _make_source(),
+            _make_source(source_id=uuid.uuid4(), name="Freelance Project"),
+        ]
+        with patch.object(
+            svc._repo, "list_sources", new=AsyncMock(return_value=sources)
+        ):
             result = await svc.list_sources(USER_ID)
         assert len(result) == 2
         assert result[0].name == "Think41 Salary"
@@ -78,8 +91,12 @@ class TestSourceCrud:
 
         svc = _make_service(mock_db)
         source = _make_source()
-        with patch.object(svc._repo, "create_source", new=AsyncMock(return_value=source)):
-            result = await svc.add_source(USER_ID, EarningSourceCreate(name="Think41 Salary", type="salary"))
+        with patch.object(
+            svc._repo, "create_source", new=AsyncMock(return_value=source)
+        ):
+            result = await svc.add_source(
+                USER_ID, EarningSourceCreate(name="Think41 Salary", type="salary")
+            )
         assert result.name == "Think41 Salary"
         mock_db.commit.assert_called_once()
 
@@ -88,9 +105,13 @@ class TestSourceCrud:
 
         svc = _make_service(mock_db)
         source = _make_source()
-        with patch.object(svc._repo, "get_source", new=AsyncMock(return_value=source)), \
-             patch.object(svc._repo, "update_source", new=AsyncMock(return_value=None)):
-            result = await svc.edit_source(USER_ID, SOURCE_ID, EarningSourceUpdate(name="Renamed Source"))
+        with (
+            patch.object(svc._repo, "get_source", new=AsyncMock(return_value=source)),
+            patch.object(svc._repo, "update_source", new=AsyncMock(return_value=None)),
+        ):
+            result = await svc.edit_source(
+                USER_ID, SOURCE_ID, EarningSourceUpdate(name="Renamed Source")
+            )
         assert result is not None
         mock_db.commit.assert_called_once()
 
@@ -98,10 +119,16 @@ class TestSourceCrud:
         svc = _make_service(mock_db)
         source = _make_source()
         deactivated_fields = {}
-        with patch.object(svc._repo, "get_source", new=AsyncMock(return_value=source)), \
-             patch.object(svc._repo, "update_source", new=AsyncMock(
-                 side_effect=lambda s, **fields: deactivated_fields.update(fields)
-             )):
+        with (
+            patch.object(svc._repo, "get_source", new=AsyncMock(return_value=source)),
+            patch.object(
+                svc._repo,
+                "update_source",
+                new=AsyncMock(
+                    side_effect=lambda s, **fields: deactivated_fields.update(fields)
+                ),
+            ),
+        ):
             await svc.deactivate_source(USER_ID, SOURCE_ID)
         assert deactivated_fields.get("is_active") is False
         mock_db.commit.assert_called_once()
@@ -121,18 +148,26 @@ class TestSourceCrud:
         svc = _make_service(mock_db)
         with patch.object(svc._repo, "get_source", new=AsyncMock(return_value=None)):
             with pytest.raises(EarningSourceNotFoundError):
-                await svc.edit_source(USER_ID, uuid.uuid4(), EarningSourceUpdate(name="X"))
+                await svc.edit_source(
+                    USER_ID, uuid.uuid4(), EarningSourceUpdate(name="X")
+                )
 
 
 class TestManualEarnings:
-    async def test_add_manual_earning_creates_earning_with_no_transaction_id(self, mock_db):
+    async def test_add_manual_earning_creates_earning_with_no_transaction_id(
+        self, mock_db
+    ):
         from elixir.domains.earnings.schemas import EarningCreate
 
         svc = _make_service(mock_db)
         earning = _make_earning(transaction_id=None, source_id=None)
-        with patch.object(svc._repo, "get_source", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_earning", new=AsyncMock(return_value=earning)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock()):
+        with (
+            patch.object(svc._repo, "get_source", new=AsyncMock(return_value=None)),
+            patch.object(
+                svc._repo, "create_earning", new=AsyncMock(return_value=earning)
+            ),
+            patch.object(svc._repo, "add_outbox_event", new=AsyncMock()),
+        ):
             result = await svc.add_manual_earning(
                 USER_ID,
                 EarningCreate(
@@ -151,9 +186,17 @@ class TestManualEarnings:
         earning = _make_earning(transaction_id=None, source_id=SOURCE_ID)
         source = _make_source()
         outbox_events = []
-        with patch.object(svc._repo, "get_source", new=AsyncMock(return_value=source)), \
-             patch.object(svc._repo, "create_earning", new=AsyncMock(return_value=earning)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p)))):
+        with (
+            patch.object(svc._repo, "get_source", new=AsyncMock(return_value=source)),
+            patch.object(
+                svc._repo, "create_earning", new=AsyncMock(return_value=earning)
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+            ),
+        ):
             result = await svc.add_manual_earning(
                 USER_ID,
                 EarningCreate(
@@ -173,10 +216,14 @@ class TestManualEarnings:
 
         svc = _make_service(mock_db)
         earning = _make_earning()
-        with patch.object(svc._repo, "get_earning", new=AsyncMock(return_value=earning)), \
-             patch.object(svc._repo, "update_earning", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "get_source", new=AsyncMock(return_value=None)):
-            result = await svc.edit_earning(USER_ID, EARNING_ID, EarningUpdate(notes="Updated notes"))
+        with (
+            patch.object(svc._repo, "get_earning", new=AsyncMock(return_value=earning)),
+            patch.object(svc._repo, "update_earning", new=AsyncMock(return_value=None)),
+            patch.object(svc._repo, "get_source", new=AsyncMock(return_value=None)),
+        ):
+            result = await svc.edit_earning(
+                USER_ID, EARNING_ID, EarningUpdate(notes="Updated notes")
+            )
         assert result is not None
         mock_db.commit.assert_called_once()
 
@@ -194,9 +241,15 @@ class TestManualEarnings:
 
         svc = _make_service(mock_db)
         earning = _make_earning()
-        with patch.object(svc._repo, "list_earnings", new=AsyncMock(return_value=[earning])), \
-             patch.object(svc._repo, "get_source", new=AsyncMock(return_value=None)):
-            result = await svc.list_earnings(USER_ID, EarningFilters(source_type="salary"))
+        with (
+            patch.object(
+                svc._repo, "list_earnings", new=AsyncMock(return_value=[earning])
+            ),
+            patch.object(svc._repo, "get_source", new=AsyncMock(return_value=None)),
+        ):
+            result = await svc.list_earnings(
+                USER_ID, EarningFilters(source_type="salary")
+            )
         assert len(result) == 1
         assert result[0].source_type == "salary"
 
@@ -208,23 +261,45 @@ class TestClassifyTransaction:
         svc = _make_service(mock_db)
         earning = _make_earning(transaction_id=TRANSACTION_ID)
         outbox_events = []
-        with patch.object(svc._repo, "get_earning_by_transaction", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "get_transaction_snapshot", new=AsyncMock(return_value={
-                 "id": TRANSACTION_ID,
-                 "user_id": USER_ID,
-                 "amount": Decimal("100000.00"),
-                 "currency": "INR",
-                 "date": date(2026, 4, 25),
-                 "type": "credit",
-                 "source": "statement_import",
-                 "raw_description": "Think41 Salary",
-             })), \
-             patch.object(svc._repo, "create_earning", new=AsyncMock(return_value=earning)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p)))):
+        with (
+            patch.object(
+                svc._repo,
+                "get_earning_by_transaction",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(
+                svc._repo,
+                "get_transaction_snapshot",
+                new=AsyncMock(
+                    return_value={
+                        "id": TRANSACTION_ID,
+                        "user_id": USER_ID,
+                        "amount": Decimal("100000.00"),
+                        "currency": "INR",
+                        "date": date(2026, 4, 25),
+                        "type": "credit",
+                        "source": "statement_import",
+                        "raw_description": "Think41 Salary",
+                    }
+                ),
+            ),
+            patch.object(
+                svc._repo, "create_earning", new=AsyncMock(return_value=earning)
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+            ),
+        ):
             await svc.classify_transaction(
                 USER_ID,
                 TRANSACTION_ID,
-                ClassifyTransactionRequest(classification="income", source_type="salary", source_label="Think41 Salary"),
+                ClassifyTransactionRequest(
+                    classification="income",
+                    source_type="salary",
+                    source_label="Think41 Salary",
+                ),
             )
         assert outbox_events[0][0] == "earnings.EarningRecorded"
         mock_db.commit.assert_called_once()
@@ -234,20 +309,34 @@ class TestClassifyTransaction:
         from elixir.shared.exceptions import TransactionAlreadyClassifiedError
 
         svc = _make_service(mock_db)
-        with patch.object(svc._repo, "get_earning_by_transaction", new=AsyncMock(return_value=_make_earning(transaction_id=TRANSACTION_ID))):
+        with patch.object(
+            svc._repo,
+            "get_earning_by_transaction",
+            new=AsyncMock(return_value=_make_earning(transaction_id=TRANSACTION_ID)),
+        ):
             with pytest.raises(TransactionAlreadyClassifiedError):
                 await svc.classify_transaction(
                     USER_ID,
                     TRANSACTION_ID,
-                    ClassifyTransactionRequest(classification="income", source_type="salary", source_label="Think41 Salary"),
+                    ClassifyTransactionRequest(
+                        classification="income",
+                        source_type="salary",
+                        source_label="Think41 Salary",
+                    ),
                 )
 
     async def test_classify_transaction_peer_repayment_skips(self, mock_db):
         from elixir.domains.earnings.schemas import ClassifyTransactionRequest
 
         svc = _make_service(mock_db)
-        with patch.object(svc._repo, "get_earning_by_transaction", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_earning", new=AsyncMock()) as mock_create:
+        with (
+            patch.object(
+                svc._repo,
+                "get_earning_by_transaction",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(svc._repo, "create_earning", new=AsyncMock()) as mock_create,
+        ):
             await svc.classify_transaction(
                 USER_ID,
                 TRANSACTION_ID,
@@ -260,8 +349,14 @@ class TestClassifyTransaction:
         from elixir.domains.earnings.schemas import ClassifyTransactionRequest
 
         svc = _make_service(mock_db)
-        with patch.object(svc._repo, "get_earning_by_transaction", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_earning", new=AsyncMock()) as mock_create:
+        with (
+            patch.object(
+                svc._repo,
+                "get_earning_by_transaction",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(svc._repo, "create_earning", new=AsyncMock()) as mock_create,
+        ):
             await svc.classify_transaction(
                 USER_ID,
                 TRANSACTION_ID,
@@ -306,16 +401,36 @@ class TestTransactionCreatedHandler:
         mock_create.assert_not_called()
         mock_db.commit.assert_not_called()
 
-    async def test_transaction_created_salary_keyword_auto_creates_earning(self, mock_db):
+    async def test_transaction_created_salary_keyword_auto_creates_earning(
+        self, mock_db
+    ):
         svc = _make_service(mock_db)
         outbox_events = []
         earning = _make_earning(transaction_id=TRANSACTION_ID)
-        with patch.object(svc._repo, "get_earning_by_transaction", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "list_peer_contact_names", new=AsyncMock(return_value=[])), \
-             patch.object(svc._repo, "list_sources", new=AsyncMock(return_value=[])), \
-             patch.object(svc._repo, "find_recurring_source_match", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_earning", new=AsyncMock(return_value=earning)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p)))):
+        with (
+            patch.object(
+                svc._repo,
+                "get_earning_by_transaction",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(
+                svc._repo, "list_peer_contact_names", new=AsyncMock(return_value=[])
+            ),
+            patch.object(svc._repo, "list_sources", new=AsyncMock(return_value=[])),
+            patch.object(
+                svc._repo,
+                "find_recurring_source_match",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(
+                svc._repo, "create_earning", new=AsyncMock(return_value=earning)
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+            ),
+        ):
             await svc.handle_transaction_created(
                 {
                     "transaction_id": str(TRANSACTION_ID),
@@ -331,11 +446,25 @@ class TestTransactionCreatedHandler:
 
     async def test_transaction_created_peer_name_skips(self, mock_db):
         svc = _make_service(mock_db)
-        with patch.object(svc._repo, "get_earning_by_transaction", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "list_peer_contact_names", new=AsyncMock(return_value=["Rahul"])), \
-             patch.object(svc._repo, "list_sources", new=AsyncMock(return_value=[])), \
-             patch.object(svc._repo, "find_recurring_source_match", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_earning", new=AsyncMock()) as mock_create:
+        with (
+            patch.object(
+                svc._repo,
+                "get_earning_by_transaction",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(
+                svc._repo,
+                "list_peer_contact_names",
+                new=AsyncMock(return_value=["Rahul"]),
+            ),
+            patch.object(svc._repo, "list_sources", new=AsyncMock(return_value=[])),
+            patch.object(
+                svc._repo,
+                "find_recurring_source_match",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(svc._repo, "create_earning", new=AsyncMock()) as mock_create,
+        ):
             await svc.handle_transaction_created(
                 {
                     "transaction_id": str(TRANSACTION_ID),
@@ -349,14 +478,32 @@ class TestTransactionCreatedHandler:
             )
         mock_create.assert_not_called()
 
-    async def test_transaction_created_ambiguous_emits_classification_needed(self, mock_db):
+    async def test_transaction_created_ambiguous_emits_classification_needed(
+        self, mock_db
+    ):
         svc = _make_service(mock_db)
         outbox_events = []
-        with patch.object(svc._repo, "get_earning_by_transaction", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "list_peer_contact_names", new=AsyncMock(return_value=[])), \
-             patch.object(svc._repo, "list_sources", new=AsyncMock(return_value=[])), \
-             patch.object(svc._repo, "find_recurring_source_match", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p)))):
+        with (
+            patch.object(
+                svc._repo,
+                "get_earning_by_transaction",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(
+                svc._repo, "list_peer_contact_names", new=AsyncMock(return_value=[])
+            ),
+            patch.object(svc._repo, "list_sources", new=AsyncMock(return_value=[])),
+            patch.object(
+                svc._repo,
+                "find_recurring_source_match",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+            ),
+        ):
             await svc.handle_transaction_created(
                 {
                     "transaction_id": str(TRANSACTION_ID),
@@ -372,9 +519,21 @@ class TestTransactionCreatedHandler:
 
     async def test_transaction_created_existing_earning_is_idempotent(self, mock_db):
         svc = _make_service(mock_db)
-        with patch.object(svc._repo, "get_earning_by_transaction", new=AsyncMock(return_value=_make_earning(transaction_id=TRANSACTION_ID))), \
-             patch.object(svc._repo, "find_recurring_source_match", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_earning", new=AsyncMock()) as mock_create:
+        with (
+            patch.object(
+                svc._repo,
+                "get_earning_by_transaction",
+                new=AsyncMock(
+                    return_value=_make_earning(transaction_id=TRANSACTION_ID)
+                ),
+            ),
+            patch.object(
+                svc._repo,
+                "find_recurring_source_match",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(svc._repo, "create_earning", new=AsyncMock()) as mock_create,
+        ):
             await svc.handle_transaction_created(
                 {
                     "transaction_id": str(TRANSACTION_ID),

@@ -5,14 +5,16 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
-    from elixir.domains.identity.workflows.activities import OTPDeliveryActivities, OTPDeliveryInput
+    from elixir.domains.identity.workflows.activities import (
+        OTPDeliveryActivities,
+        OTPDeliveryInput,
+    )
 
 
 @dataclass
 class OTPWorkflowInput:
     user_id: str
     phone_e164: str
-    otp_code: str
     otp_request_id: str
 
 
@@ -24,7 +26,6 @@ class OTPDeliveryWorkflow:
             OTPDeliveryActivities.send_otp_via_twilio,
             OTPDeliveryInput(
                 phone_e164=input.phone_e164,
-                otp_code=input.otp_code,
             ),
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(

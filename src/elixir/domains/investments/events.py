@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # ── Event dataclasses ─────────────────────────────────────────────────────────
 
+
 @dataclass
 class SIPDetected:
     event_type: ClassVar[str] = "investments.SIPDetected"
@@ -63,6 +64,7 @@ class ValuationUpdated:
 
 
 # ── Event handlers (subscribed via bootstrap) ─────────────────────────────────
+
 
 async def handle_account_removed(payload: dict, session: AsyncSession) -> None:
     """

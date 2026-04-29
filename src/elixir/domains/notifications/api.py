@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends
 
 from elixir.domains.notifications.schemas import NotificationResponse
 from elixir.domains.notifications.services import NotificationsService
@@ -11,6 +11,7 @@ router = APIRouter()
 
 
 # ── Service factory ────────────────────────────────────────────────────────────
+
 
 def get_notifications_service(
     db=Depends(get_db_session),
@@ -22,6 +23,7 @@ NotificationsSvc = Annotated[NotificationsService, Depends(get_notifications_ser
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
+
 
 @router.get("", response_model=list[NotificationResponse])
 async def list_notifications(

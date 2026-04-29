@@ -46,9 +46,7 @@ class AccountsRepository:
         )
         return result.scalar_one_or_none()
 
-    async def update_bank_account(
-        self, account: BankAccount, **fields: Any
-    ) -> None:
+    async def update_bank_account(self, account: BankAccount, **fields: Any) -> None:
         for key, value in fields.items():
             if value is not None:
                 setattr(account, key, value)
@@ -96,9 +94,7 @@ class AccountsRepository:
         )
         return result.scalar_one_or_none()
 
-    async def update_credit_card(
-        self, card: CreditCard, **fields: Any
-    ) -> None:
+    async def update_credit_card(self, card: CreditCard, **fields: Any) -> None:
         for key, value in fields.items():
             if value is not None:
                 setattr(card, key, value)
@@ -129,8 +125,6 @@ class AccountsRepository:
 
     # ── Outbox ────────────────────────────────────────────────────────────────
 
-    async def add_outbox_event(
-        self, event_type: str, payload: dict[str, Any]
-    ) -> None:
+    async def add_outbox_event(self, event_type: str, payload: dict[str, Any]) -> None:
         row = AccountsOutbox(event_type=event_type, payload=payload)
         self._db.add(row)

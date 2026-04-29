@@ -30,7 +30,10 @@ class ImportJob(Base, IDMixin, TimestampMixin):
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     original_filename: Mapped[str | None] = mapped_column(Text, nullable=True)

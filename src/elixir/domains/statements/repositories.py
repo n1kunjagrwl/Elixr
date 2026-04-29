@@ -51,9 +51,7 @@ class StatementsRepository:
         )
         return result.scalar_one_or_none()
 
-    async def list_uploads(
-        self, user_id: uuid.UUID
-    ) -> list[StatementUpload]:
+    async def list_uploads(self, user_id: uuid.UUID) -> list[StatementUpload]:
         result = await self._db.execute(
             select(StatementUpload)
             .where(StatementUpload.user_id == user_id)
@@ -92,9 +90,7 @@ class StatementsRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_job_for_upload(
-        self, upload_id: uuid.UUID
-    ) -> ExtractionJob | None:
+    async def get_job_for_upload(self, upload_id: uuid.UUID) -> ExtractionJob | None:
         result = await self._db.execute(
             select(ExtractionJob)
             .where(ExtractionJob.upload_id == upload_id)
@@ -155,8 +151,6 @@ class StatementsRepository:
 
     # ── Outbox ─────────────────────────────────────────────────────────────────
 
-    async def add_outbox_event(
-        self, event_type: str, payload: dict[str, Any]
-    ) -> None:
+    async def add_outbox_event(self, event_type: str, payload: dict[str, Any]) -> None:
         row = StatementsOutbox(event_type=event_type, payload=payload)
         self._db.add(row)

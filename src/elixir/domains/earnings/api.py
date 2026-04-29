@@ -83,7 +83,11 @@ async def get_sources(ctx: RequestCtx, svc: EarningsSvc):
     return await svc.list_sources(ctx.user_id)
 
 
-@router.post("/sources", response_model=EarningSourceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/sources",
+    response_model=EarningSourceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def add_source(
     body: EarningSourceCreate,
     ctx: RequestCtx,

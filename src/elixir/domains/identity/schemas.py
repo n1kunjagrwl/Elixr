@@ -16,6 +16,7 @@ def _normalize_phone(v: str) -> str:
 
 # ── Requests ──────────────────────────────────────────────────────────
 
+
 class RequestOTPBody(BaseModel):
     phone: str
 
@@ -44,6 +45,7 @@ class VerifyOTPBody(BaseModel):
 
 
 # ── Responses ─────────────────────────────────────────────────────────
+
 
 class OTPRequestedResponse(BaseModel):
     message: str = "OTP sent"

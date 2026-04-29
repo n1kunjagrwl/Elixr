@@ -8,7 +8,6 @@ from elixir.platform.clients.twilio import TwilioClient
 @dataclass
 class OTPDeliveryInput:
     phone_e164: str
-    otp_code: str
 
 
 class OTPDeliveryActivities:
@@ -22,4 +21,4 @@ class OTPDeliveryActivities:
 
     @activity.defn
     async def send_otp_via_twilio(self, input: OTPDeliveryInput) -> None:
-        await self._twilio.send_otp(input.phone_e164, input.otp_code)
+        await self._twilio.send_otp(input.phone_e164)

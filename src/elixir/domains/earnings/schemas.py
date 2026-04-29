@@ -54,7 +54,11 @@ class EarningCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_source_fields(self) -> "EarningCreate":
-        if self.source_type != "other" and self.source_id is None and not self.source_label:
+        if (
+            self.source_type != "other"
+            and self.source_id is None
+            and not self.source_label
+        ):
             raise ValueError(
                 "Either source_id or source_label is required unless source_type is 'other'."
             )

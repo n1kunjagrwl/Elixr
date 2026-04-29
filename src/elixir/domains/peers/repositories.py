@@ -63,11 +63,13 @@ class PeersRepository:
     ) -> bool:
         """Return True if the contact has any open or partial balance for this user."""
         result = await self._db.execute(
-            select(PeerBalance.id).where(
+            select(PeerBalance.id)
+            .where(
                 PeerBalance.peer_id == contact_id,
                 PeerBalance.user_id == user_id,
                 PeerBalance.status.in_(["open", "partial"]),
-            ).limit(1)
+            )
+            .limit(1)
         )
         return result.scalar_one_or_none() is not None
 

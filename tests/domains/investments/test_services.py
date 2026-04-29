@@ -4,6 +4,7 @@ Service-layer tests for the investments domain.
 All external dependencies (DB session, repository) are mocked.
 No real database or network connections are made.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -18,8 +19,10 @@ from tests.conftest import USER_ID
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_service(mock_db):
     from elixir.domains.investments.services import InvestmentsService
+
     return InvestmentsService(db=mock_db)
 
 
@@ -124,15 +127,17 @@ def _make_fd_details(
 
 # ── search_instruments tests ──────────────────────────────────────────────────
 
+
 class TestSearchInstruments:
     async def test_search_instruments_returns_matching(self, mock_db):
         """search_instruments returns instruments matching the query."""
-        from elixir.domains.investments.schemas import InstrumentResponse
 
         svc = _make_service(mock_db)
         inst = _make_instrument()
 
-        with patch.object(svc._repo, "search_instruments", new=AsyncMock(return_value=[inst])):
+        with patch.object(
+            svc._repo, "search_instruments", new=AsyncMock(return_value=[inst])
+        ):
             results = await svc.search_instruments(q="Reliance", type_filter=None)
 
         assert len(results) == 1
@@ -143,7 +148,9 @@ class TestSearchInstruments:
         svc = _make_service(mock_db)
         inst = _make_instrument(type_="mf", name="HDFC Equity Fund")
 
-        with patch.object(svc._repo, "search_instruments", new=AsyncMock(return_value=[inst])) as mock_search:
+        with patch.object(
+            svc._repo, "search_instruments", new=AsyncMock(return_value=[inst])
+        ) as mock_search:
             results = await svc.search_instruments(q="HDFC", type_filter="mf")
 
         mock_search.assert_called_once_with(q="HDFC", type_filter="mf")
@@ -151,6 +158,7 @@ class TestSearchInstruments:
 
 
 # ── create_instrument tests ───────────────────────────────────────────────────
+
 
 class TestCreateInstrument:
     async def test_create_instrument_creates_row(self, mock_db):
@@ -166,7 +174,9 @@ class TestCreateInstrument:
             currency="INR",
         )
 
-        with patch.object(svc._repo, "create_instrument", new=AsyncMock(return_value=inst)):
+        with patch.object(
+            svc._repo, "create_instrument", new=AsyncMock(return_value=inst)
+        ):
             result = await svc.create_instrument(data)
 
         assert result.name == "Reliance Industries"
@@ -175,6 +185,7 @@ class TestCreateInstrument:
 
 # ── list_holdings tests ───────────────────────────────────────────────────────
 
+
 class TestListHoldings:
     async def test_list_holdings_returns_user_holdings(self, mock_db):
         """list_holdings returns all holdings for the user."""
@@ -182,13 +193,16 @@ class TestListHoldings:
         h1 = _make_holding()
         h2 = _make_holding()
 
-        with patch.object(svc._repo, "list_holdings", new=AsyncMock(return_value=[h1, h2])):
+        with patch.object(
+            svc._repo, "list_holdings", new=AsyncMock(return_value=[h1, h2])
+        ):
             results = await svc.list_holdings(USER_ID)
 
         assert len(results) == 2
 
 
 # ── add_holding tests ─────────────────────────────────────────────────────────
+
 
 class TestAddHolding:
     async def test_add_holding_creates_holding(self, mock_db):
@@ -205,9 +219,15 @@ class TestAddHolding:
             avg_cost_per_unit=Decimal("2500"),
         )
 
-        with patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)), \
-             patch.object(svc._repo, "get_holding_by_instrument", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_holding", new=AsyncMock(return_value=holding)):
+        with (
+            patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)),
+            patch.object(
+                svc._repo, "get_holding_by_instrument", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo, "create_holding", new=AsyncMock(return_value=holding)
+            ),
+        ):
             result = await svc.add_holding(USER_ID, data)
 
         assert result is not None
@@ -224,8 +244,14 @@ class TestAddHolding:
 
         data = HoldingCreate(instrument_id=inst.id)
 
-        with patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)), \
-             patch.object(svc._repo, "get_holding_by_instrument", new=AsyncMock(return_value=existing_holding)):
+        with (
+            patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)),
+            patch.object(
+                svc._repo,
+                "get_holding_by_instrument",
+                new=AsyncMock(return_value=existing_holding),
+            ),
+        ):
             with pytest.raises(DuplicateHoldingError):
                 await svc.add_holding(USER_ID, data)
 
@@ -237,12 +263,15 @@ class TestAddHolding:
         svc = _make_service(mock_db)
         data = HoldingCreate(instrument_id=uuid.uuid4())
 
-        with patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_instrument", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(InstrumentNotFoundError):
                 await svc.add_holding(USER_ID, data)
 
 
 # ── edit_holding tests ────────────────────────────────────────────────────────
+
 
 class TestEditHolding:
     async def test_edit_holding_updates_fields(self, mock_db):
@@ -255,8 +284,10 @@ class TestEditHolding:
 
         data = HoldingUpdate(units=Decimal("15"), avg_cost_per_unit=Decimal("2600"))
 
-        with patch.object(svc._repo, "get_holding", new=AsyncMock(return_value=holding)), \
-             patch.object(svc._repo, "update_holding", new=AsyncMock(return_value=None)):
+        with (
+            patch.object(svc._repo, "get_holding", new=AsyncMock(return_value=holding)),
+            patch.object(svc._repo, "update_holding", new=AsyncMock(return_value=None)),
+        ):
             result = await svc.edit_holding(USER_ID, holding_id, data)
 
         assert result is not None
@@ -276,14 +307,17 @@ class TestEditHolding:
 
 # ── remove_holding tests ──────────────────────────────────────────────────────
 
+
 class TestRemoveHolding:
     async def test_remove_holding_deletes_holding(self, mock_db):
         """remove_holding deletes the specified holding."""
         svc = _make_service(mock_db)
         holding = _make_holding()
 
-        with patch.object(svc._repo, "get_holding", new=AsyncMock(return_value=holding)), \
-             patch.object(svc._repo, "delete_holding", new=AsyncMock(return_value=None)):
+        with (
+            patch.object(svc._repo, "get_holding", new=AsyncMock(return_value=holding)),
+            patch.object(svc._repo, "delete_holding", new=AsyncMock(return_value=None)),
+        ):
             await svc.remove_holding(USER_ID, holding.id)
 
         mock_db.commit.assert_called_once()
@@ -300,6 +334,7 @@ class TestRemoveHolding:
 
 
 # ── add_fd_details tests ──────────────────────────────────────────────────────
+
 
 class TestAddFDDetails:
     async def test_add_fd_details_computes_maturity_amount(self, mock_db):
@@ -323,10 +358,12 @@ class TestAddFDDetails:
 
         create_fd_mock = AsyncMock(return_value=fd)
 
-        with patch.object(svc._repo, "get_holding", new=AsyncMock(return_value=holding)), \
-             patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)), \
-             patch.object(svc._repo, "get_fd_details", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_fd_details", new=create_fd_mock):
+        with (
+            patch.object(svc._repo, "get_holding", new=AsyncMock(return_value=holding)),
+            patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)),
+            patch.object(svc._repo, "get_fd_details", new=AsyncMock(return_value=None)),
+            patch.object(svc._repo, "create_fd_details", new=create_fd_mock),
+        ):
             result = await svc.add_fd_details(USER_ID, holding.id, data)
 
         # verify create_fd_details was called with a computed maturity_amount
@@ -356,8 +393,10 @@ class TestAddFDDetails:
             compounding="quarterly",
         )
 
-        with patch.object(svc._repo, "get_holding", new=AsyncMock(return_value=holding)), \
-             patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)):
+        with (
+            patch.object(svc._repo, "get_holding", new=AsyncMock(return_value=holding)),
+            patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)),
+        ):
             with pytest.raises(FDDetailsRequiredError):
                 await svc.add_fd_details(USER_ID, holding.id, data)
 
@@ -380,9 +419,13 @@ class TestAddFDDetails:
             compounding="quarterly",
         )
 
-        with patch.object(svc._repo, "get_holding", new=AsyncMock(return_value=holding)), \
-             patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)), \
-             patch.object(svc._repo, "get_fd_details", new=AsyncMock(return_value=existing_fd)):
+        with (
+            patch.object(svc._repo, "get_holding", new=AsyncMock(return_value=holding)),
+            patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)),
+            patch.object(
+                svc._repo, "get_fd_details", new=AsyncMock(return_value=existing_fd)
+            ),
+        ):
             with pytest.raises(FDDetailsAlreadyExistError):
                 await svc.add_fd_details(USER_ID, holding.id, data)
 
@@ -409,6 +452,7 @@ class TestAddFDDetails:
 
 # ── get_portfolio_history tests ───────────────────────────────────────────────
 
+
 class TestGetPortfolioHistory:
     async def test_get_portfolio_history_returns_snapshots(self, mock_db):
         """get_portfolio_history returns list of valuation snapshots in range."""
@@ -419,7 +463,9 @@ class TestGetPortfolioHistory:
             {"snapshot_date": "2024-01-02", "total_value": "101000.00"},
         ]
 
-        with patch.object(svc._repo, "list_portfolio_history", new=AsyncMock(return_value=snapshots)):
+        with patch.object(
+            svc._repo, "list_portfolio_history", new=AsyncMock(return_value=snapshots)
+        ):
             results = await svc.get_portfolio_history(
                 USER_ID,
                 from_date=date(2024, 1, 1),
@@ -430,6 +476,7 @@ class TestGetPortfolioHistory:
 
 
 # ── register_sip tests ────────────────────────────────────────────────────────
+
 
 class TestRegisterSIP:
     async def test_register_sip_creates_registration(self, mock_db):
@@ -449,8 +496,10 @@ class TestRegisterSIP:
             bank_account_id=bank_account_id,
         )
 
-        with patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)), \
-             patch.object(svc._repo, "create_sip", new=AsyncMock(return_value=sip)):
+        with (
+            patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=inst)),
+            patch.object(svc._repo, "create_sip", new=AsyncMock(return_value=sip)),
+        ):
             result = await svc.register_sip(USER_ID, data)
 
         assert result is not None
@@ -469,12 +518,15 @@ class TestRegisterSIP:
             frequency="monthly",
         )
 
-        with patch.object(svc._repo, "get_instrument", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_instrument", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(InstrumentNotFoundError):
                 await svc.register_sip(USER_ID, data)
 
 
 # ── edit_sip tests ────────────────────────────────────────────────────────────
+
 
 class TestEditSIP:
     async def test_edit_sip_updates_fields(self, mock_db):
@@ -486,8 +538,10 @@ class TestEditSIP:
 
         data = SIPUpdate(amount=Decimal("7500"), debit_day=10)
 
-        with patch.object(svc._repo, "get_sip", new=AsyncMock(return_value=sip)), \
-             patch.object(svc._repo, "update_sip", new=AsyncMock(return_value=None)):
+        with (
+            patch.object(svc._repo, "get_sip", new=AsyncMock(return_value=sip)),
+            patch.object(svc._repo, "update_sip", new=AsyncMock(return_value=None)),
+        ):
             result = await svc.edit_sip(USER_ID, sip.id, data)
 
         assert result is not None
@@ -507,14 +561,17 @@ class TestEditSIP:
 
 # ── deactivate_sip tests ──────────────────────────────────────────────────────
 
+
 class TestDeactivateSIP:
     async def test_deactivate_sip_sets_is_active_false(self, mock_db):
         """deactivate_sip sets is_active to False."""
         svc = _make_service(mock_db)
         sip = _make_sip(is_active=True)
 
-        with patch.object(svc._repo, "get_sip", new=AsyncMock(return_value=sip)), \
-             patch.object(svc._repo, "deactivate_sip", new=AsyncMock(return_value=None)):
+        with (
+            patch.object(svc._repo, "get_sip", new=AsyncMock(return_value=sip)),
+            patch.object(svc._repo, "deactivate_sip", new=AsyncMock(return_value=None)),
+        ):
             await svc.deactivate_sip(USER_ID, sip.id)
 
         mock_db.commit.assert_called_once()
@@ -532,6 +589,7 @@ class TestDeactivateSIP:
 
 # ── confirm_sip_link tests ────────────────────────────────────────────────────
 
+
 class TestConfirmSIPLink:
     async def test_confirm_sip_link_writes_outbox_event(self, mock_db):
         """confirm_sip_link writes a SIPLinked event to the outbox."""
@@ -540,10 +598,14 @@ class TestConfirmSIPLink:
         transaction_id = uuid.uuid4()
         outbox_events = []
 
-        with patch.object(svc._repo, "get_sip", new=AsyncMock(return_value=sip)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(
-                 side_effect=lambda et, p: outbox_events.append((et, p))
-             )):
+        with (
+            patch.object(svc._repo, "get_sip", new=AsyncMock(return_value=sip)),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+            ),
+        ):
             await svc.confirm_sip_link(USER_ID, sip.id, transaction_id)
 
         mock_db.commit.assert_called_once()
@@ -556,6 +618,7 @@ class TestConfirmSIPLink:
 
 # ── event handler tests ───────────────────────────────────────────────────────
 
+
 class TestHandleAccountRemoved:
     async def test_handle_account_removed_deactivates_sips(self, mock_db):
         """handle_account_removed deactivates all SIPs with matching bank_account_id."""
@@ -564,7 +627,9 @@ class TestHandleAccountRemoved:
 
         deactivate_mock = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "deactivate_sips_for_account", new=deactivate_mock):
+        with patch.object(
+            svc._repo, "deactivate_sips_for_account", new=deactivate_mock
+        ):
             await svc.handle_account_removed(
                 {"account_id": str(account_id), "user_id": str(USER_ID)}
             )
@@ -596,7 +661,9 @@ class TestHandleTransactionCreated:
         svc = _make_service(mock_db)
         payload = self._make_transaction_payload(type_="credit")
 
-        with patch.object(svc._repo, "list_active_sips_for_user", new=AsyncMock(return_value=[])) as mock_list:
+        with patch.object(
+            svc._repo, "list_active_sips_for_user", new=AsyncMock(return_value=[])
+        ) as mock_list:
             await svc.handle_transaction_created(payload)
 
         mock_list.assert_not_called()
@@ -625,11 +692,21 @@ class TestHandleTransactionCreated:
 
         outbox_events = []
 
-        with patch.object(svc._repo, "list_active_sips_for_user", new=AsyncMock(return_value=[sip])), \
-             patch.object(svc._repo, "outbox_event_exists", new=AsyncMock(return_value=False)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(
-                 side_effect=lambda et, p: outbox_events.append((et, p))
-             )):
+        with (
+            patch.object(
+                svc._repo,
+                "list_active_sips_for_user",
+                new=AsyncMock(return_value=[sip]),
+            ),
+            patch.object(
+                svc._repo, "outbox_event_exists", new=AsyncMock(return_value=False)
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+            ),
+        ):
             await svc.handle_transaction_created(payload)
 
         assert len(outbox_events) == 1
@@ -638,7 +715,9 @@ class TestHandleTransactionCreated:
         assert event_payload["transaction_id"] == str(transaction_id)
         assert event_payload["sip_registration_id"] == str(sip.id)
 
-    async def test_handle_transaction_created_skips_when_amount_too_different(self, mock_db):
+    async def test_handle_transaction_created_skips_when_amount_too_different(
+        self, mock_db
+    ):
         """A debit more than 2% different from SIP amount is not detected."""
         svc = _make_service(mock_db)
 
@@ -659,10 +738,18 @@ class TestHandleTransactionCreated:
 
         outbox_events = []
 
-        with patch.object(svc._repo, "list_active_sips_for_user", new=AsyncMock(return_value=[sip])), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(
-                 side_effect=lambda et, p: outbox_events.append((et, p))
-             )):
+        with (
+            patch.object(
+                svc._repo,
+                "list_active_sips_for_user",
+                new=AsyncMock(return_value=[sip]),
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+            ),
+        ):
             await svc.handle_transaction_created(payload)
 
         assert len(outbox_events) == 0
@@ -689,11 +776,21 @@ class TestHandleTransactionCreated:
 
         outbox_events = []
 
-        with patch.object(svc._repo, "list_active_sips_for_user", new=AsyncMock(return_value=[sip])), \
-             patch.object(svc._repo, "outbox_event_exists", new=AsyncMock(return_value=True)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(
-                 side_effect=lambda et, p: outbox_events.append((et, p))
-             )):
+        with (
+            patch.object(
+                svc._repo,
+                "list_active_sips_for_user",
+                new=AsyncMock(return_value=[sip]),
+            ),
+            patch.object(
+                svc._repo, "outbox_event_exists", new=AsyncMock(return_value=True)
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+            ),
+        ):
             await svc.handle_transaction_created(payload)
 
         # idempotent — no new outbox row written
@@ -701,6 +798,7 @@ class TestHandleTransactionCreated:
 
 
 # ── compute_maturity_amount tests ─────────────────────────────────────────────
+
 
 class TestComputeMaturityAmount:
     def test_compute_maturity_amount_quarterly(self):

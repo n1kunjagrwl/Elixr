@@ -5,6 +5,7 @@ Uses httpx.AsyncClient against a minimal FastAPI app with:
 - The StatementsService dependency overridden per test via dependency_overrides
 - Auth middleware present; authenticated endpoints require a valid Bearer token
 """
+
 from __future__ import annotations
 
 import uuid
@@ -12,14 +13,19 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import USER_ID, SESSION_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    USER_ID,
+    SESSION_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 from elixir.platform.security import create_access_token
 
 
 # ── App builder ────────────────────────────────────────────────────────────────
+
 
 def _build_statements_app(mock_service, settings=None):
     """
@@ -32,7 +38,10 @@ def _build_statements_app(mock_service, settings=None):
     from contextlib import asynccontextmanager
     from fastapi import FastAPI, Request
     from fastapi.responses import JSONResponse
-    from elixir.domains.statements.api import router as statements_router, get_statements_service
+    from elixir.domains.statements.api import (
+        router as statements_router,
+        get_statements_service,
+    )
     from elixir.shared.exceptions import ElixirError
     from elixir.runtime.middleware import AuthMiddleware, RequestLoggingMiddleware
     from fastapi.exceptions import RequestValidationError
@@ -73,15 +82,22 @@ def _build_statements_app(mock_service, settings=None):
             entry = dict(err)
             if "ctx" in entry:
                 ctx = dict(entry["ctx"])
-                entry["ctx"] = {k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()}
+                entry["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()
+                }
             safe.append(entry)
         return safe
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     return app
@@ -92,8 +108,10 @@ def _make_auth_header(settings=None) -> dict[str, str]:
     if settings is None:
         settings = make_test_settings()
     token, _ = create_access_token(
-        str(USER_ID), str(SESSION_ID),
-        settings.jwt_secret, settings.access_token_expiry_minutes,
+        str(USER_ID),
+        str(SESSION_ID),
+        settings.jwt_secret,
+        settings.access_token_expiry_minutes,
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -108,12 +126,14 @@ def _make_mock_service(**overrides):
 
 def _make_upload_start_response(job_id=None):
     from elixir.domains.statements.schemas import UploadStartResponse
+
     jid = job_id or uuid.uuid4()
     return UploadStartResponse(job_id=jid, stream_url=f"/statements/{jid}/stream")
 
 
 def _make_upload_response(upload_id=None):
     from elixir.domains.statements.schemas import UploadResponse
+
     uid = upload_id or uuid.uuid4()
     return UploadResponse(
         id=uid,
@@ -128,7 +148,11 @@ def _make_upload_response(upload_id=None):
 
 
 def _make_upload_status_response(upload_id=None, job_id=None):
-    from elixir.domains.statements.schemas import UploadStatusResponse, ExtractionJobResponse
+    from elixir.domains.statements.schemas import (
+        UploadStatusResponse,
+        ExtractionJobResponse,
+    )
+
     uid = upload_id or uuid.uuid4()
     jid = job_id or uuid.uuid4()
     job = ExtractionJobResponse(
@@ -153,6 +177,7 @@ def _make_upload_status_response(upload_id=None, job_id=None):
 
 def _make_row_response(row_id=None, job_id=None):
     from elixir.domains.statements.schemas import RawRowResponse
+
     return RawRowResponse(
         id=row_id or uuid.uuid4(),
         job_id=job_id or uuid.uuid4(),
@@ -169,6 +194,7 @@ def _make_row_response(row_id=None, job_id=None):
 
 # ── POST /statements/upload ────────────────────────────────────────────────────
 
+
 class TestUploadEndpoint:
     async def test_upload_returns_201_with_job_id(self):
         """Valid PDF upload → 201 with job_id and stream_url."""
@@ -178,11 +204,17 @@ class TestUploadEndpoint:
         svc = _make_mock_service(upload_statement=AsyncMock(return_value=response_obj))
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/statements/upload",
                 files={"file": ("test.pdf", b"PDF content", "application/pdf")},
-                data={"account_id": str(uuid.uuid4()), "account_kind": "bank", "file_type": "pdf"},
+                data={
+                    "account_id": str(uuid.uuid4()),
+                    "account_kind": "bank",
+                    "file_type": "pdf",
+                },
                 headers=_make_auth_header(settings),
             )
 
@@ -197,15 +229,25 @@ class TestUploadEndpoint:
 
         settings = make_test_settings()
         svc = _make_mock_service(
-            upload_statement=AsyncMock(side_effect=InvalidFileTypeError("Unsupported file type"))
+            upload_statement=AsyncMock(
+                side_effect=InvalidFileTypeError("Unsupported file type")
+            )
         )
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/statements/upload",
-                files={"file": ("test.xlsx", b"Excel content", "application/vnd.ms-excel")},
-                data={"account_id": str(uuid.uuid4()), "account_kind": "bank", "file_type": "xlsx"},
+                files={
+                    "file": ("test.xlsx", b"Excel content", "application/vnd.ms-excel")
+                },
+                data={
+                    "account_id": str(uuid.uuid4()),
+                    "account_kind": "bank",
+                    "file_type": "xlsx",
+                },
                 headers=_make_auth_header(settings),
             )
 
@@ -216,17 +258,24 @@ class TestUploadEndpoint:
         svc = _make_mock_service()
         app = _build_statements_app(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/statements/upload",
                 files={"file": ("test.pdf", b"PDF content", "application/pdf")},
-                data={"account_id": str(uuid.uuid4()), "account_kind": "bank", "file_type": "pdf"},
+                data={
+                    "account_id": str(uuid.uuid4()),
+                    "account_kind": "bank",
+                    "file_type": "pdf",
+                },
             )
 
         assert resp.status_code == 401
 
 
 # ── GET /statements ────────────────────────────────────────────────────────────
+
 
 class TestGetUploads:
     async def test_get_uploads_returns_200(self):
@@ -236,7 +285,9 @@ class TestGetUploads:
         svc = _make_mock_service(list_uploads=AsyncMock(return_value=uploads))
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/statements", headers=_make_auth_header(settings))
 
         assert resp.status_code == 200
@@ -245,6 +296,7 @@ class TestGetUploads:
 
 
 # ── GET /statements/{upload_id} ────────────────────────────────────────────────
+
 
 class TestGetUploadStatus:
     async def test_get_upload_status_returns_200(self):
@@ -255,7 +307,9 @@ class TestGetUploadStatus:
         svc = _make_mock_service(get_upload_status=AsyncMock(return_value=response_obj))
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/statements/{upload_id}",
                 headers=_make_auth_header(settings),
@@ -275,7 +329,9 @@ class TestGetUploadStatus:
         )
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/statements/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -287,6 +343,7 @@ class TestGetUploadStatus:
 
 # ── POST /statements/{job_id}/rows/{row_id}/classify ──────────────────────────
 
+
 class TestClassifyRow:
     async def test_classify_row_returns_200(self):
         """Valid classification request → 200."""
@@ -296,7 +353,9 @@ class TestClassifyRow:
         svc = _make_mock_service(classify_row=AsyncMock(return_value=None))
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/statements/{job_id}/rows/{row_id}/classify",
                 json={"category_id": str(uuid.uuid4())},
@@ -313,11 +372,15 @@ class TestClassifyRow:
         job_id = uuid.uuid4()
         row_id = uuid.uuid4()
         svc = _make_mock_service(
-            classify_row=AsyncMock(side_effect=RowAlreadyClassifiedError("Already classified"))
+            classify_row=AsyncMock(
+                side_effect=RowAlreadyClassifiedError("Already classified")
+            )
         )
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/statements/{job_id}/rows/{row_id}/classify",
                 json={"category_id": str(uuid.uuid4())},
@@ -330,6 +393,7 @@ class TestClassifyRow:
 
 # ── GET /statements/{job_id}/rows ──────────────────────────────────────────────
 
+
 class TestGetRows:
     async def test_get_rows_returns_200(self):
         """Authenticated GET /statements/{job_id}/rows → 200 with list of rows."""
@@ -339,7 +403,9 @@ class TestGetRows:
         svc = _make_mock_service(get_rows_for_resume=AsyncMock(return_value=rows))
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/statements/{job_id}/rows",
                 headers=_make_auth_header(settings),
@@ -352,6 +418,7 @@ class TestGetRows:
 
 # ── GET /statements/{job_id}/stream ───────────────────────────────────────────
 
+
 class TestStreamEndpoint:
     async def test_stream_returns_200(self):
         """SSE stream endpoint returns 200 without error."""
@@ -360,7 +427,9 @@ class TestStreamEndpoint:
         svc = _make_mock_service()
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/statements/{job_id}/stream",
                 headers=_make_auth_header(settings),
@@ -371,14 +440,15 @@ class TestStreamEndpoint:
 
 # ── GET /statements/jobs/{job_id} ─────────────────────────────────────────────
 
+
 class TestGetJobResume:
     async def test_get_job_resume_returns_200(self):
         """GET /statements/jobs/{job_id} returns 200 with job + rows."""
         from elixir.domains.statements.schemas import (
             ExtractionJobResponse,
             JobResumeResponse,
-            RawRowResponse,
         )
+
         settings = make_test_settings()
         job_id = uuid.uuid4()
         upload_id = uuid.uuid4()
@@ -395,7 +465,9 @@ class TestGetJobResume:
         svc = _make_mock_service(get_job_resume=AsyncMock(return_value=resume))
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/statements/jobs/{job_id}",
                 headers=_make_auth_header(settings),
@@ -414,11 +486,15 @@ class TestGetJobResume:
         settings = make_test_settings()
         job_id = uuid.uuid4()
         svc = _make_mock_service(
-            get_job_resume=AsyncMock(side_effect=ExtractionJobNotFoundError("not found"))
+            get_job_resume=AsyncMock(
+                side_effect=ExtractionJobNotFoundError("not found")
+            )
         )
         app = _build_statements_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/statements/jobs/{job_id}",
                 headers=_make_auth_header(settings),

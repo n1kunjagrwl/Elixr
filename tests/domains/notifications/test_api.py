@@ -4,20 +4,26 @@ API-layer tests for the notifications domain.
 Uses httpx.AsyncClient against a minimal FastAPI app with the
 NotificationsService dependency overridden per test.
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import USER_ID, SESSION_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    USER_ID,
+    SESSION_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 from elixir.platform.security import create_access_token
 
 
 # ── App builder ────────────────────────────────────────────────────────────────
+
 
 def _build_notifications_app(mock_service, settings=None):
     """Build a minimal FastAPI app with NotificationsService overridden."""
@@ -27,7 +33,10 @@ def _build_notifications_app(mock_service, settings=None):
     from contextlib import asynccontextmanager
     from fastapi import FastAPI, Request
     from fastapi.responses import JSONResponse
-    from elixir.domains.notifications.api import router as notifications_router, get_notifications_service
+    from elixir.domains.notifications.api import (
+        router as notifications_router,
+        get_notifications_service,
+    )
     from elixir.shared.exceptions import ElixirError
     from elixir.runtime.middleware import AuthMiddleware, RequestLoggingMiddleware
     from fastapi.exceptions import RequestValidationError
@@ -61,7 +70,9 @@ def _build_notifications_app(mock_service, settings=None):
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
             content={"error": "VALIDATION_ERROR", "detail": exc.errors()},
@@ -74,8 +85,10 @@ def _make_auth_header(settings=None) -> dict[str, str]:
     if settings is None:
         settings = make_test_settings()
     token, _ = create_access_token(
-        str(USER_ID), str(SESSION_ID),
-        settings.jwt_secret, settings.access_token_expiry_minutes,
+        str(USER_ID),
+        str(SESSION_ID),
+        settings.jwt_secret,
+        settings.access_token_expiry_minutes,
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -89,6 +102,7 @@ def _make_mock_service(**overrides):
 
 def _make_notification_response(**overrides):
     from elixir.domains.notifications.schemas import NotificationResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         user_id=USER_ID,
@@ -108,16 +122,23 @@ def _make_notification_response(**overrides):
 
 # ── GET /notifications ─────────────────────────────────────────────────────────
 
+
 class TestListNotifications:
     async def test_list_notifications_200(self):
         """Authenticated GET /notifications returns 200 with notification list."""
         settings = make_test_settings()
         notifications = [_make_notification_response(), _make_notification_response()]
-        svc = _make_mock_service(list_notifications=AsyncMock(return_value=notifications))
+        svc = _make_mock_service(
+            list_notifications=AsyncMock(return_value=notifications)
+        )
         app = _build_notifications_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.get("/notifications", headers=_make_auth_header(settings))
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                "/notifications", headers=_make_auth_header(settings)
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -131,7 +152,9 @@ class TestListNotifications:
         svc = _make_mock_service(list_notifications=mock_list)
         app = _build_notifications_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/notifications?unread=true",
                 headers=_make_auth_header(settings),
@@ -149,6 +172,7 @@ class TestListNotifications:
 
 # ── PATCH /notifications/{id}/read ────────────────────────────────────────────
 
+
 class TestMarkRead:
     async def test_mark_read_200(self):
         """PATCH /notifications/{id}/read returns 200."""
@@ -157,7 +181,9 @@ class TestMarkRead:
         svc = _make_mock_service(mark_read=AsyncMock(return_value=None))
         app = _build_notifications_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/notifications/{notification_id}/read",
                 headers=_make_auth_header(settings),
@@ -175,7 +201,9 @@ class TestMarkRead:
         )
         app = _build_notifications_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/notifications/{uuid.uuid4()}/read",
                 headers=_make_auth_header(settings),
@@ -187,6 +215,7 @@ class TestMarkRead:
 
 # ── PATCH /notifications/read-all ─────────────────────────────────────────────
 
+
 class TestMarkAllRead:
     async def test_mark_all_read_200(self):
         """PATCH /notifications/read-all returns {'marked': N}."""
@@ -194,7 +223,9 @@ class TestMarkAllRead:
         svc = _make_mock_service(mark_all_read=AsyncMock(return_value={"marked": 3}))
         app = _build_notifications_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 "/notifications/read-all",
                 headers=_make_auth_header(settings),

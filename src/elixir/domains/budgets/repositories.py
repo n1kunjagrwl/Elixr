@@ -6,7 +6,12 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from elixir.domains.budgets.models import BudgetAlert, BudgetGoal, BudgetProgress, BudgetsOutbox
+from elixir.domains.budgets.models import (
+    BudgetAlert,
+    BudgetGoal,
+    BudgetProgress,
+    BudgetsOutbox,
+)
 
 
 class BudgetsRepository:
@@ -135,11 +140,13 @@ class BudgetsRepository:
         self, goal_id: uuid.UUID, period_start: date, threshold_percent: int
     ) -> bool:
         result = await self._db.execute(
-            select(BudgetAlert.id).where(
+            select(BudgetAlert.id)
+            .where(
                 BudgetAlert.goal_id == goal_id,
                 BudgetAlert.period_start == period_start,
                 BudgetAlert.threshold_percent == threshold_percent,
-            ).limit(1)
+            )
+            .limit(1)
         )
         return result.scalar_one_or_none() is not None
 
@@ -181,8 +188,6 @@ class BudgetsRepository:
 
     # ── Outbox ────────────────────────────────────────────────────────────────
 
-    async def add_outbox_event(
-        self, event_type: str, payload: dict[str, Any]
-    ) -> None:
+    async def add_outbox_event(self, event_type: str, payload: dict[str, Any]) -> None:
         row = BudgetsOutbox(event_type=event_type, payload=payload)
         self._db.add(row)

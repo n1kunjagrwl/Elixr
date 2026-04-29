@@ -20,9 +20,7 @@ class IdentityRepository:
         return result.scalar_one_or_none()
 
     async def get_user_by_id(self, user_id: UUID) -> User | None:
-        result = await self._db.execute(
-            select(User).where(User.id == user_id)
-        )
+        result = await self._db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
     async def create_user(self, phone_e164: str) -> User:
@@ -52,6 +50,7 @@ class IdentityRepository:
 
     async def count_recent_otp_requests(self, user_id: UUID, since: datetime) -> int:
         from sqlalchemy import func
+
         result = await self._db.execute(
             select(func.count()).where(
                 OTPRequest.user_id == user_id,
@@ -61,14 +60,23 @@ class IdentityRepository:
         return result.scalar_one()
 
     async def create_otp_request(
-        self, user_id: UUID, code_hash: str, expires_at: datetime
+        self, user_id: UUID, expires_at: datetime
     ) -> OTPRequest:
-        otp_req = OTPRequest(user_id=user_id, code_hash=code_hash, expires_at=expires_at)
+        otp_req = OTPRequest(user_id=user_id, expires_at=expires_at)
         self._db.add(otp_req)
         await self._db.flush()
         return otp_req
 
-    async def increment_otp_attempt(self, otp_req: OTPRequest, lock_until: datetime | None) -> None:
+    async def get_session_count(self, user_id: UUID) -> int:
+        from sqlalchemy import func
+        result = await self._db.execute(
+            select(func.count()).where(Session.user_id == user_id)
+        )
+        return result.scalar_one()
+
+    async def increment_otp_attempt(
+        self, otp_req: OTPRequest, lock_until: datetime | None
+    ) -> None:
         otp_req.attempt_count += 1
         otp_req.locked_until = lock_until
 
@@ -95,12 +103,12 @@ class IdentityRepository:
         return session
 
     async def get_session_by_id(self, session_id: UUID) -> Session | None:
-        result = await self._db.execute(
-            select(Session).where(Session.id == session_id)
-        )
+        result = await self._db.execute(select(Session).where(Session.id == session_id))
         return result.scalar_one_or_none()
 
-    async def get_session_by_id_and_user(self, user_id: UUID, session_id: UUID) -> Session | None:
+    async def get_session_by_id_and_user(
+        self, user_id: UUID, session_id: UUID
+    ) -> Session | None:
         """Fetch a session scoped to a specific user — used for revocation checks."""
         result = await self._db.execute(
             select(Session).where(

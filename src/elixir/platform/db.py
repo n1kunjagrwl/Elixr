@@ -13,10 +13,14 @@ def build_engine(database_url: str, **kwargs) -> AsyncEngine:
         pool_pre_ping=True,
         pool_size=kwargs.get("pool_size", 10),
         max_overflow=kwargs.get("max_overflow", 20),
-        pool_recycle=kwargs.get("pool_recycle", 1800),   # recycle connections every 30 min
-        pool_timeout=kwargs.get("pool_timeout", 30),      # wait max 30s for a connection
+        pool_recycle=kwargs.get(
+            "pool_recycle", 1800
+        ),  # recycle connections every 30 min
+        pool_timeout=kwargs.get("pool_timeout", 30),  # wait max 30s for a connection
         connect_args={
-            "command_timeout": kwargs.get("command_timeout", 30),  # asyncpg-specific: 30s statement timeout
+            "command_timeout": kwargs.get(
+                "command_timeout", 30
+            ),  # asyncpg-specific: 30s statement timeout
             "server_settings": {
                 "application_name": "elixir",
                 "statement_timeout": str(kwargs.get("statement_timeout_ms", 30000)),

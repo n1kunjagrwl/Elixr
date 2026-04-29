@@ -96,7 +96,9 @@ class InvestmentsService:
         if inst is None:
             raise InstrumentNotFoundError(f"Instrument {data.instrument_id} not found.")
 
-        existing = await self._repo.get_holding_by_instrument(user_id, data.instrument_id)
+        existing = await self._repo.get_holding_by_instrument(
+            user_id, data.instrument_id
+        )
         if existing is not None:
             raise DuplicateHoldingError(
                 f"Holding for instrument {data.instrument_id} already exists."

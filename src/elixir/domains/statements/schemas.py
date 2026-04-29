@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # ── Shared sub-schemas ─────────────────────────────────────────────────────────
 
+
 class RowItemInput(BaseModel):
     """A sub-item for split-row classification."""
 
@@ -30,6 +31,7 @@ class ExtractionJobResponse(BaseModel):
 
 
 # ── Upload schemas ─────────────────────────────────────────────────────────────
+
 
 class UploadStartResponse(BaseModel):
     """Returned by POST /statements/upload."""
@@ -63,6 +65,7 @@ class UploadStatusResponse(UploadResponse):
 
 # ── Row schemas ────────────────────────────────────────────────────────────────
 
+
 class RawRowResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -85,6 +88,7 @@ class RawRowResponse(BaseModel):
 
 # ── Resume schemas ────────────────────────────────────────────────────────────
 
+
 class JobResumeResponse(BaseModel):
     """Returned by GET /statements/jobs/{job_id} — job status + all rows."""
 
@@ -93,6 +97,7 @@ class JobResumeResponse(BaseModel):
 
 
 # ── Classification schemas ─────────────────────────────────────────────────────
+
 
 class ClassifyRowRequest(BaseModel):
     """Body for POST /statements/{job_id}/rows/{row_id}/classify."""

@@ -13,7 +13,10 @@ class PeerContact(Base, IDMixin, MutableMixin):
     __tablename__ = "peer_contacts"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -34,7 +37,10 @@ class PeerBalance(Base, IDMixin, MutableMixin):
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     peer_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -52,11 +58,17 @@ class PeerBalance(Base, IDMixin, MutableMixin):
         Computed("original_amount - settled_amount", persisted=True),
         nullable=False,
     )
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="INR")
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, server_default="INR"
+    )
     direction: Mapped[str] = mapped_column(String(20), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="open")
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="open"
+    )
     linked_transaction_id: Mapped[uuid.UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("transactions.id", ondelete="SET NULL"),
+        nullable=True,
     )
     notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
@@ -77,12 +89,16 @@ class PeerSettlement(Base, IDMixin, TimestampMixin):
         index=True,
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="INR")
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, server_default="INR"
+    )
     settled_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
     method: Mapped[str | None] = mapped_column(String(20), nullable=True)
     linked_transaction_id: Mapped[uuid.UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("transactions.id", ondelete="SET NULL"),
+        nullable=True,
     )
     notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)

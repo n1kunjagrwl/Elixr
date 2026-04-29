@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 # ── Category Schemas ──────────────────────────────────────────────────────────
 
+
 class CategoryCreate(BaseModel):
     name: str
     slug: str
@@ -41,6 +42,7 @@ class CategoryResponse(BaseModel):
 
 # ── Rule Schemas ───────────────────────────────────────────────────────────────
 
+
 class RuleCreate(BaseModel):
     pattern: str
     match_type: str  # contains|starts_with|exact|regex
@@ -71,6 +73,7 @@ class RuleResponse(BaseModel):
 
 
 # ── Suggestion Schemas ────────────────────────────────────────────────────────
+
 
 class CategorySuggestion(BaseModel):
     category_id: uuid.UUID | None

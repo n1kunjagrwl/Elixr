@@ -35,10 +35,16 @@ class BudgetGoal(Base, IDMixin, MutableMixin):
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     category_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("categories.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
     )
     limit_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
@@ -53,7 +59,9 @@ class BudgetGoal(Base, IDMixin, MutableMixin):
 class BudgetProgress(Base, IDMixin, MutableMixin):
     __tablename__ = "budget_progress"
     __table_args__ = (
-        UniqueConstraint("goal_id", "period_start", name="uq_budget_progress_goal_period"),
+        UniqueConstraint(
+            "goal_id", "period_start", name="uq_budget_progress_goal_period"
+        ),
     )
 
     goal_id: Mapped[uuid.UUID] = mapped_column(
@@ -63,7 +71,10 @@ class BudgetProgress(Base, IDMixin, MutableMixin):
         index=True,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     period_start: Mapped[date] = mapped_column(Date, nullable=False)
     period_end: Mapped[date] = mapped_column(Date, nullable=False)
@@ -76,7 +87,9 @@ class BudgetAlert(Base, IDMixin, TimestampMixin):
     __tablename__ = "budget_alerts"
     __table_args__ = (
         UniqueConstraint(
-            "goal_id", "period_start", "threshold_percent",
+            "goal_id",
+            "period_start",
+            "threshold_percent",
             name="uq_budget_alerts_goal_period_threshold",
         ),
         CheckConstraint(

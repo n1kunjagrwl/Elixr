@@ -72,5 +72,9 @@ class OutboxPoller:
             await session.rollback()
             logger.exception(
                 "Failed to dispatch outbox row",
-                extra={"table": table, "row_id": str(row.id), "event_type": row.event_type},
+                extra={
+                    "table": table,
+                    "row_id": str(row.id),
+                    "event_type": row.event_type,
+                },
             )

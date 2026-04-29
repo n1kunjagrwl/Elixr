@@ -4,6 +4,7 @@ Service-layer tests for the transactions domain.
 All external dependencies (DB session, repository, cross-domain reads) are mocked.
 No real database or network connections are made.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -19,6 +20,7 @@ from tests.conftest import USER_ID, make_test_settings
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_service(mock_db):
     from elixir.domains.transactions.services import TransactionsService
 
@@ -32,7 +34,9 @@ CATEGORY_ID_2 = uuid.uuid4()
 
 
 def _fingerprint(description: str | None, txn_date: date, amount: Decimal) -> str:
-    normalized = ((description or "").strip().lower() + txn_date.isoformat() + str(amount))
+    normalized = (
+        (description or "").strip().lower() + txn_date.isoformat() + str(amount)
+    )
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
@@ -125,8 +129,11 @@ def _make_list_row(
 
 # ── add_transaction tests ──────────────────────────────────────────────────────
 
+
 class TestAddTransaction:
-    async def test_add_transaction_creates_manual_transaction_items_and_outbox_events(self, mock_db):
+    async def test_add_transaction_creates_manual_transaction_items_and_outbox_events(
+        self, mock_db
+    ):
         """Happy path: manual entry creates the transaction, its items, and both outbox events."""
         from elixir.domains.transactions.schemas import TransactionCreate
 
@@ -152,26 +159,31 @@ class TestAddTransaction:
             ],
         )
 
-        with patch.object(
-            svc._repo,
-            "category_ids_exist",
-            new=AsyncMock(return_value=True),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "create_transaction",
-            new=AsyncMock(return_value=transaction),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "create_transaction_items",
-            new=AsyncMock(return_value=transaction.items),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "add_outbox_event",
-            new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
-            create=True,
+        with (
+            patch.object(
+                svc._repo,
+                "category_ids_exist",
+                new=AsyncMock(return_value=True),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "create_transaction",
+                new=AsyncMock(return_value=transaction),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "create_transaction_items",
+                new=AsyncMock(return_value=transaction.items),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+                create=True,
+            ),
         ):
             result = await svc.add_transaction(USER_ID, data)
 
@@ -255,8 +267,11 @@ class TestAddTransaction:
 
 # ── edit_transaction tests ────────────────────────────────────────────────────
 
+
 class TestEditTransaction:
-    async def test_edit_transaction_updates_notes_items_and_writes_transaction_updated_event(self, mock_db):
+    async def test_edit_transaction_updates_notes_items_and_writes_transaction_updated_event(
+        self, mock_db
+    ):
         """Happy path: editing notes and category breakdown replaces items and emits TransactionUpdated."""
         from elixir.domains.transactions.schemas import TransactionUpdate
 
@@ -265,7 +280,9 @@ class TestEditTransaction:
             _make_item(category_id=CATEGORY_ID, amount=Decimal("500.00"), label=None),
         ]
         new_items = [
-            _make_item(category_id=CATEGORY_ID_2, amount=Decimal("300.00"), label="Meal"),
+            _make_item(
+                category_id=CATEGORY_ID_2, amount=Decimal("300.00"), label="Meal"
+            ),
             _make_item(
                 category_id=CATEGORY_ID,
                 amount=Decimal("200.00"),
@@ -292,36 +309,43 @@ class TestEditTransaction:
             ],
         )
 
-        with patch.object(
-            svc._repo,
-            "get_transaction",
-            new=AsyncMock(return_value=transaction),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "get_transaction_items",
-            new=AsyncMock(return_value=old_items),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "category_ids_exist",
-            new=AsyncMock(return_value=True),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "update_transaction",
-            new=AsyncMock(return_value=None),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "replace_transaction_items",
-            new=AsyncMock(return_value=new_items),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "add_outbox_event",
-            new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
-            create=True,
+        with (
+            patch.object(
+                svc._repo,
+                "get_transaction",
+                new=AsyncMock(return_value=transaction),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "get_transaction_items",
+                new=AsyncMock(return_value=old_items),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "category_ids_exist",
+                new=AsyncMock(return_value=True),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "update_transaction",
+                new=AsyncMock(return_value=None),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "replace_transaction_items",
+                new=AsyncMock(return_value=new_items),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+                create=True,
+            ),
         ):
             result = await svc.edit_transaction(USER_ID, transaction.id, data)
 
@@ -371,7 +395,9 @@ class TestEditTransaction:
             create=True,
         ):
             with pytest.raises(TransactionNotFoundError):
-                await svc.edit_transaction(USER_ID, uuid.uuid4(), TransactionUpdate(notes="Updated"))
+                await svc.edit_transaction(
+                    USER_ID, uuid.uuid4(), TransactionUpdate(notes="Updated")
+                )
 
         mock_db.commit.assert_not_called()
 
@@ -406,8 +432,11 @@ class TestEditTransaction:
 
 # ── list/get transaction tests ────────────────────────────────────────────────
 
+
 class TestListTransactions:
-    async def test_list_transactions_returns_paginated_summaries_for_filters(self, mock_db):
+    async def test_list_transactions_returns_paginated_summaries_for_filters(
+        self, mock_db
+    ):
         """Listing returns paginated transaction summaries with account and primary category display fields."""
         from elixir.domains.transactions.schemas import TransactionFilters
         from elixir.shared.pagination import PagedResponse
@@ -429,7 +458,9 @@ class TestListTransactions:
             new=AsyncMock(return_value=repo_page),
             create=True,
         ) as mock_list:
-            result = await svc.list_transactions(USER_ID, filters=filters, page=1, page_size=50)
+            result = await svc.list_transactions(
+                USER_ID, filters=filters, page=1, page_size=50
+            )
 
         assert result.total == 1
         assert result.page == 1
@@ -487,8 +518,11 @@ class TestGetTransaction:
 
 # ── import / event-driven creation tests ──────────────────────────────────────
 
+
 class TestCreateTransactionsFromClassifiedRows:
-    async def test_create_transactions_from_classified_rows_inserts_new_rows_and_publishes_events(self, mock_db):
+    async def test_create_transactions_from_classified_rows_inserts_new_rows_and_publishes_events(
+        self, mock_db
+    ):
         """Happy path: classified rows create transactions/items and publish both downstream events."""
         svc = _make_service(mock_db)
         created_transactions = [
@@ -511,7 +545,9 @@ class TestCreateTransactionsFromClassifiedRows:
                 raw_description="Salary credit",
                 txn_type="credit",
                 notes=None,
-                items=[_make_item(category_id=CATEGORY_ID_2, amount=Decimal("1200.00"))],
+                items=[
+                    _make_item(category_id=CATEGORY_ID_2, amount=Decimal("1200.00"))
+                ],
             ),
         ]
         outbox_events: list[tuple[str, dict]] = []
@@ -534,32 +570,38 @@ class TestCreateTransactionsFromClassifiedRows:
             },
         ]
 
-        with patch.object(
-            svc._repo,
-            "fingerprint_exists",
-            new=AsyncMock(side_effect=[False, False]),
-            create=True,
-        ) as mock_exists, patch.object(
-            svc._repo,
-            "create_transaction",
-            new=AsyncMock(side_effect=created_transactions),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "create_transaction_items",
-            new=AsyncMock(side_effect=[t.items for t in created_transactions]),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "add_outbox_event",
-            new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
-            create=True,
-        ), patch.object(
-            svc,
-            "_detect_transfers",
-            new=AsyncMock(return_value=None),
-            create=True,
-        ) as mock_detect:
+        with (
+            patch.object(
+                svc._repo,
+                "fingerprint_exists",
+                new=AsyncMock(side_effect=[False, False]),
+                create=True,
+            ) as mock_exists,
+            patch.object(
+                svc._repo,
+                "create_transaction",
+                new=AsyncMock(side_effect=created_transactions),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "create_transaction_items",
+                new=AsyncMock(side_effect=[t.items for t in created_transactions]),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+                create=True,
+            ),
+            patch.object(
+                svc,
+                "_detect_transfers",
+                new=AsyncMock(return_value=None),
+                create=True,
+            ) as mock_detect,
+        ):
             await svc.create_transactions_from_classified_rows(
                 user_id=USER_ID,
                 account_id=ACCOUNT_ID,
@@ -590,7 +632,9 @@ class TestCreateTransactionsFromClassifiedRows:
         )
         mock_db.commit.assert_called_once()
 
-    async def test_create_transactions_from_classified_rows_skips_duplicate_fingerprints(self, mock_db):
+    async def test_create_transactions_from_classified_rows_skips_duplicate_fingerprints(
+        self, mock_db
+    ):
         """Idempotency: rows with an existing fingerprint are skipped silently and do not emit events."""
         svc = _make_service(mock_db)
         new_transaction = _make_transaction(
@@ -622,32 +666,38 @@ class TestCreateTransactionsFromClassifiedRows:
             },
         ]
 
-        with patch.object(
-            svc._repo,
-            "fingerprint_exists",
-            new=AsyncMock(side_effect=[True, False]),
-            create=True,
-        ), patch.object(
-            svc._repo,
-            "create_transaction",
-            new=AsyncMock(return_value=new_transaction),
-            create=True,
-        ) as mock_create_transaction, patch.object(
-            svc._repo,
-            "create_transaction_items",
-            new=AsyncMock(return_value=new_transaction.items),
-            create=True,
-        ) as mock_create_items, patch.object(
-            svc._repo,
-            "add_outbox_event",
-            new=AsyncMock(return_value=None),
-            create=True,
-        ) as mock_outbox, patch.object(
-            svc,
-            "_detect_transfers",
-            new=AsyncMock(return_value=None),
-            create=True,
-        ) as mock_detect:
+        with (
+            patch.object(
+                svc._repo,
+                "fingerprint_exists",
+                new=AsyncMock(side_effect=[True, False]),
+                create=True,
+            ),
+            patch.object(
+                svc._repo,
+                "create_transaction",
+                new=AsyncMock(return_value=new_transaction),
+                create=True,
+            ) as mock_create_transaction,
+            patch.object(
+                svc._repo,
+                "create_transaction_items",
+                new=AsyncMock(return_value=new_transaction.items),
+                create=True,
+            ) as mock_create_items,
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(return_value=None),
+                create=True,
+            ) as mock_outbox,
+            patch.object(
+                svc,
+                "_detect_transfers",
+                new=AsyncMock(return_value=None),
+                create=True,
+            ) as mock_detect,
+        ):
             await svc.create_transactions_from_classified_rows(
                 user_id=USER_ID,
                 account_id=ACCOUNT_ID,

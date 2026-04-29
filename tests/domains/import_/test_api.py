@@ -5,6 +5,7 @@ Uses httpx.AsyncClient against a minimal FastAPI app with:
 - The ImportService dependency overridden per test via dependency_overrides
 - Auth middleware present; authenticated endpoints require a valid Bearer token
 """
+
 from __future__ import annotations
 
 import uuid
@@ -13,7 +14,12 @@ from unittest.mock import AsyncMock
 
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import SESSION_ID, USER_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    SESSION_ID,
+    USER_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 from elixir.platform.security import create_access_token
 
 
@@ -65,15 +71,22 @@ def _build_import_app(mock_service, settings=None):
             entry = dict(err)
             if "ctx" in entry:
                 ctx = dict(entry["ctx"])
-                entry["ctx"] = {k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()}
+                entry["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()
+                }
             safe.append(entry)
         return safe
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     return app
@@ -83,8 +96,10 @@ def _make_auth_header(settings=None) -> dict[str, str]:
     if settings is None:
         settings = make_test_settings()
     token, _ = create_access_token(
-        str(USER_ID), str(SESSION_ID),
-        settings.jwt_secret, settings.access_token_expiry_minutes,
+        str(USER_ID),
+        str(SESSION_ID),
+        settings.jwt_secret,
+        settings.access_token_expiry_minutes,
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -139,12 +154,17 @@ class TestUploadEndpoint:
         job_id = uuid.uuid4()
         svc = _make_mock_service(
             upload_file=AsyncMock(
-                return_value={"job_id": str(job_id), "stream_url": f"/import/{job_id}/stream"}
+                return_value={
+                    "job_id": str(job_id),
+                    "stream_url": f"/import/{job_id}/stream",
+                }
             )
         )
         app = _build_import_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/import/upload",
                 files={"file": ("test.csv", b"a,b\n1,2", "text/csv")},
@@ -161,7 +181,9 @@ class TestUploadEndpoint:
         svc = _make_mock_service()
         app = _build_import_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/import/upload",
                 files={"file": ("test.csv", b"a,b\n1,2", "text/csv")},
@@ -175,7 +197,9 @@ class TestUploadEndpoint:
         svc = _make_mock_service()
         app = _build_import_app(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/import/upload",
                 files={"file": ("test.csv", b"a,b\n1,2", "text/csv")},
@@ -189,11 +213,15 @@ class TestListJobs:
     async def test_list_jobs_returns_200(self):
         settings = make_test_settings()
         svc = _make_mock_service(
-            list_jobs=AsyncMock(return_value=[_make_job_response(), _make_job_response()])
+            list_jobs=AsyncMock(
+                return_value=[_make_job_response(), _make_job_response()]
+            )
         )
         app = _build_import_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/import", headers=_make_auth_header(settings))
 
         assert resp.status_code == 200
@@ -205,12 +233,18 @@ class TestGetJobStatus:
         settings = make_test_settings()
         job_id = uuid.uuid4()
         svc = _make_mock_service(
-            get_job_status=AsyncMock(return_value=_make_job_detail_response(id=str(job_id)))
+            get_job_status=AsyncMock(
+                return_value=_make_job_detail_response(id=str(job_id))
+            )
         )
         app = _build_import_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.get(f"/import/{job_id}", headers=_make_auth_header(settings))
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                f"/import/{job_id}", headers=_make_auth_header(settings)
+            )
 
         assert resp.status_code == 200
         assert resp.json()["id"] == str(job_id)
@@ -224,7 +258,9 @@ class TestConfirmMapping:
         svc = _make_mock_service(confirm_mapping=AsyncMock(return_value=None))
         app = _build_import_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/import/{job_id}/confirm-mapping",
                 json={
@@ -245,7 +281,9 @@ class TestConfirmMapping:
         svc = _make_mock_service()
         app = _build_import_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/import/{uuid.uuid4()}/confirm-mapping",
                 json={
@@ -267,7 +305,9 @@ class TestStreamEndpoint:
         svc = _make_mock_service()
         app = _build_import_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/import/{uuid.uuid4()}/stream",
                 headers=_make_auth_header(settings),
@@ -284,7 +324,9 @@ class TestDeleteJobEndpoint:
         svc = _make_mock_service(delete_import=AsyncMock(return_value=None))
         app = _build_import_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/import/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -298,11 +340,15 @@ class TestDeleteJobEndpoint:
 
         settings = make_test_settings()
         svc = _make_mock_service(
-            delete_import=AsyncMock(side_effect=ImportJobStateError("Job is still active"))
+            delete_import=AsyncMock(
+                side_effect=ImportJobStateError("Job is still active")
+            )
         )
         app = _build_import_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/import/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -321,7 +367,9 @@ class TestDeleteJobEndpoint:
         )
         app = _build_import_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/import/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -335,7 +383,9 @@ class TestDeleteJobEndpoint:
         svc = _make_mock_service()
         app = _build_import_app(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(f"/import/{uuid.uuid4()}")
 
         assert resp.status_code == 401

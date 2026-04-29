@@ -79,7 +79,9 @@ class TransactionsRepository:
         items: list[dict[str, Any]],
     ) -> list[TransactionItem]:
         await self._db.execute(
-            delete(TransactionItem).where(TransactionItem.transaction_id == transaction_id)
+            delete(TransactionItem).where(
+                TransactionItem.transaction_id == transaction_id
+            )
         )
         await self._db.flush()
         return await self.create_transaction_items(transaction_id, items)
@@ -174,11 +176,7 @@ class TransactionsRepository:
 
         where_sql = " AND ".join(clauses)
         total_result = await self._db.execute(
-            text(
-                "SELECT COUNT(*) "
-                "FROM transactions t "
-                f"WHERE {where_sql}"
-            ),
+            text(f"SELECT COUNT(*) FROM transactions t WHERE {where_sql}"),
             params,
         )
         total = int(total_result.scalar_one())
@@ -259,8 +257,6 @@ class TransactionsRepository:
         result = await self._db.execute(query)
         return list(result.scalars().all())
 
-    async def add_outbox_event(
-        self, event_type: str, payload: dict[str, Any]
-    ) -> None:
+    async def add_outbox_event(self, event_type: str, payload: dict[str, Any]) -> None:
         row = TransactionsOutbox(event_type=event_type, payload=payload)
         self._db.add(row)

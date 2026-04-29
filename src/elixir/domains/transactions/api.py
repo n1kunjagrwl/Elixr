@@ -52,7 +52,9 @@ async def get_transactions(
         category_id=category_id,
         search_text=search_text,
     )
-    return await svc.list_transactions(ctx.user_id, filters=filters, page=page, page_size=page_size)
+    return await svc.list_transactions(
+        ctx.user_id, filters=filters, page=page, page_size=page_size
+    )
 
 
 @router.get("/{transaction_id}", response_model=TransactionResponse)
@@ -64,7 +66,9 @@ async def get_transaction(
     return await svc.get_transaction(ctx.user_id, transaction_id)
 
 
-@router.post("", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED
+)
 async def add_transaction(
     body: TransactionCreate,
     ctx: RequestCtx,

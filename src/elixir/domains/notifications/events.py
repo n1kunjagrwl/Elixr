@@ -4,6 +4,7 @@ Notifications domain event handlers.
 Each handler subscribes to a domain event, builds notification content,
 and calls the service to create a deduplicated notification.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -30,7 +31,9 @@ async def handle_account_linked(payload: EventPayload, session: AsyncSession) ->
     )
 
 
-async def handle_extraction_completed(payload: EventPayload, session: AsyncSession) -> None:
+async def handle_extraction_completed(
+    payload: EventPayload, session: AsyncSession
+) -> None:
     """Create notification when statement extraction finishes successfully."""
     from elixir.domains.notifications.services import NotificationsService
 
@@ -112,7 +115,9 @@ async def handle_sip_detected(payload: EventPayload, session: AsyncSession) -> N
     )
 
 
-async def handle_budget_limit_warning(payload: EventPayload, session: AsyncSession) -> None:
+async def handle_budget_limit_warning(
+    payload: EventPayload, session: AsyncSession
+) -> None:
     """Create notification when spending reaches the 80% budget threshold."""
     from elixir.domains.notifications.services import NotificationsService
 
@@ -130,7 +135,9 @@ async def handle_budget_limit_warning(payload: EventPayload, session: AsyncSessi
     )
 
 
-async def handle_budget_limit_breached(payload: EventPayload, session: AsyncSession) -> None:
+async def handle_budget_limit_breached(
+    payload: EventPayload, session: AsyncSession
+) -> None:
     """Create notification when spending exceeds the 100% budget threshold."""
     from elixir.domains.notifications.services import NotificationsService
 

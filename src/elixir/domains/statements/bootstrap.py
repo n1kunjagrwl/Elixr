@@ -10,6 +10,7 @@ def get_temporal_workflows() -> list:
     from elixir.domains.statements.workflows.statement_processing import (
         StatementProcessingWorkflow,
     )
+
     return [StatementProcessingWorkflow]
 
 

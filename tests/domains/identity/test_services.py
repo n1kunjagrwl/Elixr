@@ -4,6 +4,7 @@ Service-layer tests for the identity domain.
 All external dependencies (DB session, Twilio, Temporal) are mocked.
 No real database or network connections are made.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -29,7 +30,10 @@ from tests.conftest import PHONE, OTP_CODE, USER_ID, SESSION_ID
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-def _make_service(mock_db, mock_twilio, mock_temporal, test_settings) -> IdentityService:
+
+def _make_service(
+    mock_db, mock_twilio, mock_temporal, test_settings
+) -> IdentityService:
     return IdentityService(
         db=mock_db,
         twilio=mock_twilio,
@@ -59,14 +63,18 @@ def _make_otp_request(
     otp_req.id = uuid.uuid4()
     otp_req.user_id = user_id or USER_ID
     otp_req.code_hash = hash_otp(otp_code)
-    otp_req.expires_at = (now - timedelta(seconds=1)) if expired else (now + timedelta(seconds=60))
+    otp_req.expires_at = (
+        (now - timedelta(seconds=1)) if expired else (now + timedelta(seconds=60))
+    )
     otp_req.locked_until = (now + timedelta(minutes=5)) if locked else None
     otp_req.used_at = now if used else None
     otp_req.attempt_count = attempt_count
     return otp_req
 
 
-def _make_session(user_id=None, session_id=None, revoked=False, expired=False, settings=None):
+def _make_session(
+    user_id=None, session_id=None, revoked=False, expired=False, settings=None
+):
     now = datetime.now(timezone.utc)
     s = MagicMock()
     s.id = session_id or SESSION_ID
@@ -80,6 +88,7 @@ def _make_session(user_id=None, session_id=None, revoked=False, expired=False, s
 
 # ── request_otp tests ─────────────────────────────────────────────────────────
 
+
 class TestRequestOTP:
     async def test_request_otp_creates_otp_request_for_new_user(
         self, mock_db, mock_twilio, mock_temporal, test_settings
@@ -88,11 +97,24 @@ class TestRequestOTP:
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
         user = _make_user()
 
-        with patch.object(svc._repo, "get_or_create_user", new=AsyncMock(return_value=(user, True))), \
-             patch.object(svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_otp_request", new=AsyncMock(return_value=_make_otp_request())):
-
+        with (
+            patch.object(
+                svc._repo,
+                "get_or_create_user",
+                new=AsyncMock(return_value=(user, True)),
+            ),
+            patch.object(
+                svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo,
+                "create_otp_request",
+                new=AsyncMock(return_value=_make_otp_request()),
+            ),
+        ):
             result = await svc.request_otp(PHONE)
 
         assert result.expires_in == test_settings.otp_expiry_seconds
@@ -106,11 +128,24 @@ class TestRequestOTP:
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
         user = _make_user()
 
-        with patch.object(svc._repo, "get_or_create_user", new=AsyncMock(return_value=(user, False))) as mock_goc, \
-             patch.object(svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_otp_request", new=AsyncMock(return_value=_make_otp_request())):
-
+        with (
+            patch.object(
+                svc._repo,
+                "get_or_create_user",
+                new=AsyncMock(return_value=(user, False)),
+            ) as mock_goc,
+            patch.object(
+                svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo,
+                "create_otp_request",
+                new=AsyncMock(return_value=_make_otp_request()),
+            ),
+        ):
             result = await svc.request_otp(PHONE)
 
         mock_goc.assert_called_once_with(PHONE)
@@ -125,9 +160,18 @@ class TestRequestOTP:
         # count equals the limit
         over_limit = test_settings.otp_rate_limit_count
 
-        with patch.object(svc._repo, "get_or_create_user", new=AsyncMock(return_value=(user, False))), \
-             patch.object(svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=over_limit)):
-
+        with (
+            patch.object(
+                svc._repo,
+                "get_or_create_user",
+                new=AsyncMock(return_value=(user, False)),
+            ),
+            patch.object(
+                svc._repo,
+                "count_recent_otp_requests",
+                new=AsyncMock(return_value=over_limit),
+            ),
+        ):
             with pytest.raises(RateLimitError):
                 await svc.request_otp(PHONE)
 
@@ -141,10 +185,21 @@ class TestRequestOTP:
         user = _make_user()
         locked_otp = _make_otp_request(locked=True)
 
-        with patch.object(svc._repo, "get_or_create_user", new=AsyncMock(return_value=(user, False))), \
-             patch.object(svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=locked_otp)):
-
+        with (
+            patch.object(
+                svc._repo,
+                "get_or_create_user",
+                new=AsyncMock(return_value=(user, False)),
+            ),
+            patch.object(
+                svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)
+            ),
+            patch.object(
+                svc._repo,
+                "get_latest_otp_request",
+                new=AsyncMock(return_value=locked_otp),
+            ),
+        ):
             with pytest.raises(OTPLockedError):
                 await svc.request_otp(PHONE)
 
@@ -157,11 +212,24 @@ class TestRequestOTP:
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
         user = _make_user()
 
-        with patch.object(svc._repo, "get_or_create_user", new=AsyncMock(return_value=(user, True))), \
-             patch.object(svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_otp_request", new=AsyncMock(return_value=_make_otp_request())):
-
+        with (
+            patch.object(
+                svc._repo,
+                "get_or_create_user",
+                new=AsyncMock(return_value=(user, True)),
+            ),
+            patch.object(
+                svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo,
+                "create_otp_request",
+                new=AsyncMock(return_value=_make_otp_request()),
+            ),
+        ):
             await svc.request_otp(PHONE)
 
         mock_temporal.start_workflow.assert_called_once()
@@ -175,11 +243,24 @@ class TestRequestOTP:
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
         user = _make_user()
 
-        with patch.object(svc._repo, "get_or_create_user", new=AsyncMock(return_value=(user, True))), \
-             patch.object(svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_otp_request", new=AsyncMock(return_value=_make_otp_request())):
-
+        with (
+            patch.object(
+                svc._repo,
+                "get_or_create_user",
+                new=AsyncMock(return_value=(user, True)),
+            ),
+            patch.object(
+                svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo,
+                "create_otp_request",
+                new=AsyncMock(return_value=_make_otp_request()),
+            ),
+        ):
             await svc.request_otp(PHONE)
 
         mock_twilio.send_otp.assert_called_once()
@@ -191,11 +272,24 @@ class TestRequestOTP:
         svc = _make_service(mock_db, mock_twilio, None, test_settings)
         user = _make_user()
 
-        with patch.object(svc._repo, "get_or_create_user", new=AsyncMock(return_value=(user, True))), \
-             patch.object(svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_otp_request", new=AsyncMock(return_value=_make_otp_request())):
-
+        with (
+            patch.object(
+                svc._repo,
+                "get_or_create_user",
+                new=AsyncMock(return_value=(user, True)),
+            ),
+            patch.object(
+                svc._repo, "count_recent_otp_requests", new=AsyncMock(return_value=0)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo,
+                "create_otp_request",
+                new=AsyncMock(return_value=_make_otp_request()),
+            ),
+        ):
             await svc.request_otp(PHONE)
 
         # temporal is None, so send_otp should not be called from the fallback
@@ -204,6 +298,7 @@ class TestRequestOTP:
 
 
 # ── verify_otp tests ──────────────────────────────────────────────────────────
+
 
 class TestVerifyOTP:
     async def test_verify_otp_success_new_user_creates_user_and_session(
@@ -215,11 +310,18 @@ class TestVerifyOTP:
         otp_req = _make_otp_request(attempt_count=0)
         session = _make_session()
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)), \
-             patch.object(svc._repo, "mark_otp_used", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_session", new=AsyncMock(return_value=session)):
-
+        with (
+            patch.object(
+                svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)
+            ),
+            patch.object(svc._repo, "mark_otp_used", new=AsyncMock(return_value=None)),
+            patch.object(
+                svc._repo, "create_session", new=AsyncMock(return_value=session)
+            ),
+        ):
             result = await svc.verify_otp(PHONE, OTP_CODE)
 
         assert result.access_token
@@ -238,11 +340,18 @@ class TestVerifyOTP:
         otp_req = _make_otp_request(attempt_count=1)
         session = _make_session()
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)), \
-             patch.object(svc._repo, "mark_otp_used", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_session", new=AsyncMock(return_value=session)) as mock_cs:
-
+        with (
+            patch.object(
+                svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)
+            ),
+            patch.object(svc._repo, "mark_otp_used", new=AsyncMock(return_value=None)),
+            patch.object(
+                svc._repo, "create_session", new=AsyncMock(return_value=session)
+            ) as mock_cs,
+        ):
             result = await svc.verify_otp(PHONE, OTP_CODE)
 
         mock_cs.assert_called_once()
@@ -257,16 +366,24 @@ class TestVerifyOTP:
         otp_req = _make_otp_request(attempt_count=0)
         session = _make_session()
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)), \
-             patch.object(svc._repo, "mark_otp_used", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_session", new=AsyncMock(return_value=session)):
-
+        with (
+            patch.object(
+                svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)
+            ),
+            patch.object(svc._repo, "mark_otp_used", new=AsyncMock(return_value=None)),
+            patch.object(
+                svc._repo, "create_session", new=AsyncMock(return_value=session)
+            ),
+        ):
             await svc.verify_otp(PHONE, OTP_CODE)
 
         # Check that add() was called with an outbox row having event_type UserRegistered
         added_objects = [call.args[0] for call in mock_db.add.call_args_list]
         from elixir.domains.identity.models import IdentityOutbox
+
         outbox_rows = [o for o in added_objects if isinstance(o, IdentityOutbox)]
         assert any(r.event_type == "identity.UserRegistered" for r in outbox_rows)
 
@@ -279,15 +396,23 @@ class TestVerifyOTP:
         otp_req = _make_otp_request(attempt_count=1)
         session = _make_session()
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)), \
-             patch.object(svc._repo, "mark_otp_used", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_session", new=AsyncMock(return_value=session)):
-
+        with (
+            patch.object(
+                svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)
+            ),
+            patch.object(svc._repo, "mark_otp_used", new=AsyncMock(return_value=None)),
+            patch.object(
+                svc._repo, "create_session", new=AsyncMock(return_value=session)
+            ),
+        ):
             await svc.verify_otp(PHONE, OTP_CODE)
 
         added_objects = [call.args[0] for call in mock_db.add.call_args_list]
         from elixir.domains.identity.models import IdentityOutbox
+
         outbox_rows = [o for o in added_objects if isinstance(o, IdentityOutbox)]
         assert any(r.event_type == "identity.UserLoggedIn" for r in outbox_rows)
 
@@ -297,7 +422,9 @@ class TestVerifyOTP:
         """No user in DB → UserNotFoundError."""
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_user_by_phone", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(UserNotFoundError):
                 await svc.verify_otp(PHONE, OTP_CODE)
 
@@ -309,9 +436,16 @@ class TestVerifyOTP:
         user = _make_user()
         expired_otp = _make_otp_request(expired=True)
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=expired_otp)):
-
+        with (
+            patch.object(
+                svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)
+            ),
+            patch.object(
+                svc._repo,
+                "get_latest_otp_request",
+                new=AsyncMock(return_value=expired_otp),
+            ),
+        ):
             with pytest.raises(OTPExpiredError):
                 await svc.verify_otp(PHONE, OTP_CODE)
 
@@ -322,9 +456,14 @@ class TestVerifyOTP:
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
         user = _make_user()
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(
+                svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=None)
+            ),
+        ):
             with pytest.raises(OTPExpiredError):
                 await svc.verify_otp(PHONE, OTP_CODE)
 
@@ -336,9 +475,16 @@ class TestVerifyOTP:
         user = _make_user()
         used_otp = _make_otp_request(used=True)
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=used_otp)):
-
+        with (
+            patch.object(
+                svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)
+            ),
+            patch.object(
+                svc._repo,
+                "get_latest_otp_request",
+                new=AsyncMock(return_value=used_otp),
+            ),
+        ):
             with pytest.raises(OTPExpiredError):
                 await svc.verify_otp(PHONE, OTP_CODE)
 
@@ -352,10 +498,15 @@ class TestVerifyOTP:
 
         mock_increment = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)), \
-             patch.object(svc._repo, "increment_otp_attempt", new=mock_increment):
-
+        with (
+            patch.object(
+                svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)
+            ),
+            patch.object(svc._repo, "increment_otp_attempt", new=mock_increment),
+        ):
             with pytest.raises(OTPInvalidError):
                 await svc.verify_otp(PHONE, "000000")  # wrong code
 
@@ -376,10 +527,15 @@ class TestVerifyOTP:
 
         mock_increment = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)), \
-             patch.object(svc._repo, "increment_otp_attempt", new=mock_increment):
-
+        with (
+            patch.object(
+                svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)
+            ),
+            patch.object(
+                svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=otp_req)
+            ),
+            patch.object(svc._repo, "increment_otp_attempt", new=mock_increment),
+        ):
             with pytest.raises(OTPInvalidError):
                 await svc.verify_otp(PHONE, "000000")  # wrong code
 
@@ -398,10 +554,17 @@ class TestVerifyOTP:
 
         mock_increment = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)), \
-             patch.object(svc._repo, "get_latest_otp_request", new=AsyncMock(return_value=locked_otp)), \
-             patch.object(svc._repo, "increment_otp_attempt", new=mock_increment):
-
+        with (
+            patch.object(
+                svc._repo, "get_user_by_phone", new=AsyncMock(return_value=user)
+            ),
+            patch.object(
+                svc._repo,
+                "get_latest_otp_request",
+                new=AsyncMock(return_value=locked_otp),
+            ),
+            patch.object(svc._repo, "increment_otp_attempt", new=mock_increment),
+        ):
             with pytest.raises(OTPLockedError):
                 await svc.verify_otp(PHONE, OTP_CODE)
 
@@ -409,6 +572,7 @@ class TestVerifyOTP:
 
 
 # ── refresh_session tests ─────────────────────────────────────────────────────
+
 
 class TestRefreshSession:
     async def test_refresh_session_success_rotates_access_jti(
@@ -418,7 +582,8 @@ class TestRefreshSession:
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
         session = _make_session()
         refresh_token, refresh_jti = create_refresh_token(
-            str(USER_ID), str(SESSION_ID),
+            str(USER_ID),
+            str(SESSION_ID),
             test_settings.jwt_secret,
             test_settings.refresh_token_expiry_days,
         )
@@ -427,9 +592,14 @@ class TestRefreshSession:
 
         mock_rotate = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "get_session_by_refresh_jti", new=AsyncMock(return_value=session)), \
-             patch.object(svc._repo, "rotate_access_jti", new=mock_rotate):
-
+        with (
+            patch.object(
+                svc._repo,
+                "get_session_by_refresh_jti",
+                new=AsyncMock(return_value=session),
+            ),
+            patch.object(svc._repo, "rotate_access_jti", new=mock_rotate),
+        ):
             result = await svc.refresh_session(refresh_token)
 
         assert result.access_token
@@ -447,13 +617,16 @@ class TestRefreshSession:
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
         session = _make_session(revoked=True)
         refresh_token, refresh_jti = create_refresh_token(
-            str(USER_ID), str(SESSION_ID),
+            str(USER_ID),
+            str(SESSION_ID),
             test_settings.jwt_secret,
             test_settings.refresh_token_expiry_days,
         )
         session.refresh_token_jti = refresh_jti
 
-        with patch.object(svc._repo, "get_session_by_refresh_jti", new=AsyncMock(return_value=session)):
+        with patch.object(
+            svc._repo, "get_session_by_refresh_jti", new=AsyncMock(return_value=session)
+        ):
             with pytest.raises(SessionRevokedError):
                 await svc.refresh_session(refresh_token)
 
@@ -466,13 +639,16 @@ class TestRefreshSession:
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
         session = _make_session(expired=True)
         refresh_token, refresh_jti = create_refresh_token(
-            str(USER_ID), str(SESSION_ID),
+            str(USER_ID),
+            str(SESSION_ID),
             test_settings.jwt_secret,
             test_settings.refresh_token_expiry_days,
         )
         session.refresh_token_jti = refresh_jti
 
-        with patch.object(svc._repo, "get_session_by_refresh_jti", new=AsyncMock(return_value=session)):
+        with patch.object(
+            svc._repo, "get_session_by_refresh_jti", new=AsyncMock(return_value=session)
+        ):
             with pytest.raises(SessionExpiredError):
                 await svc.refresh_session(refresh_token)
 
@@ -484,12 +660,15 @@ class TestRefreshSession:
         """No session matching refresh JTI → SessionExpiredError."""
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
         refresh_token, _ = create_refresh_token(
-            str(USER_ID), str(SESSION_ID),
+            str(USER_ID),
+            str(SESSION_ID),
             test_settings.jwt_secret,
             test_settings.refresh_token_expiry_days,
         )
 
-        with patch.object(svc._repo, "get_session_by_refresh_jti", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_session_by_refresh_jti", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(SessionExpiredError):
                 await svc.refresh_session(refresh_token)
 
@@ -498,6 +677,7 @@ class TestRefreshSession:
     ):
         """Garbage token string → TokenInvalidError (from security layer)."""
         from elixir.shared.exceptions import TokenInvalidError
+
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
 
         with pytest.raises(TokenInvalidError):
@@ -505,6 +685,7 @@ class TestRefreshSession:
 
 
 # ── logout tests ──────────────────────────────────────────────────────────────
+
 
 class TestLogout:
     async def test_logout_revokes_session(
@@ -515,9 +696,12 @@ class TestLogout:
         session = _make_session()
         mock_revoke = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "get_session_by_id", new=AsyncMock(return_value=session)), \
-             patch.object(svc._repo, "revoke_session", new=mock_revoke):
-
+        with (
+            patch.object(
+                svc._repo, "get_session_by_id", new=AsyncMock(return_value=session)
+            ),
+            patch.object(svc._repo, "revoke_session", new=mock_revoke),
+        ):
             await svc.logout(USER_ID, SESSION_ID)
 
         mock_revoke.assert_called_once_with(session)
@@ -529,7 +713,9 @@ class TestLogout:
         """logout() is a no-op when the session doesn't exist (idempotent)."""
         svc = _make_service(mock_db, mock_twilio, mock_temporal, test_settings)
 
-        with patch.object(svc._repo, "get_session_by_id", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_session_by_id", new=AsyncMock(return_value=None)
+        ):
             # Should not raise
             await svc.logout(USER_ID, SESSION_ID)
 
@@ -545,9 +731,12 @@ class TestLogout:
 
         mock_revoke = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "get_session_by_id", new=AsyncMock(return_value=session)), \
-             patch.object(svc._repo, "revoke_session", new=mock_revoke):
-
+        with (
+            patch.object(
+                svc._repo, "get_session_by_id", new=AsyncMock(return_value=session)
+            ),
+            patch.object(svc._repo, "revoke_session", new=mock_revoke),
+        ):
             await svc.logout(USER_ID, SESSION_ID)  # caller is USER_ID
 
         mock_revoke.assert_not_called()

@@ -48,6 +48,7 @@ class ImportService:
     ) -> ImportStartResponse:
         if storage_client is None:
             from elixir.shared.exceptions import UnprocessableError
+
             raise UnprocessableError(
                 "File storage is not configured. Import upload is currently unavailable."
             )
@@ -78,7 +79,9 @@ class ImportService:
                 ImportProcessingWorkflow.run,
                 args=[str(job.id), str(user_id), file_path, source_type],
                 id=f"import-{job.id}",
-                task_queue=self._settings.temporal_task_queue if self._settings else "elixir-main",
+                task_queue=self._settings.temporal_task_queue
+                if self._settings
+                else "elixir-main",
             )
             await self._repo.update_job(job, temporal_workflow_id=wf_handle.id)
         except Exception:
@@ -152,10 +155,18 @@ class ImportService:
 
         try:
             if job.temporal_workflow_id:
-                wf_handle = temporal_client.get_workflow_handle(job.temporal_workflow_id)
+                wf_handle = temporal_client.get_workflow_handle(
+                    job.temporal_workflow_id
+                )
                 await wf_handle.signal(
                     "ColumnMappingConfirmed",
-                    [{"source_column": m["source_column"], "mapped_to": m["mapped_to"]} for m in mappings],
+                    [
+                        {
+                            "source_column": m["source_column"],
+                            "mapped_to": m["mapped_to"],
+                        }
+                        for m in mappings
+                    ],
                 )
         except Exception:
             pass

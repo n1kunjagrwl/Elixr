@@ -13,6 +13,7 @@ from elixir.shared.events import EventPayload
 
 # ── Event dataclasses ─────────────────────────────────────────────────────────
 
+
 @dataclass
 class BudgetLimitWarning:
     event_type: ClassVar[str] = "budgets.BudgetLimitWarning"
@@ -67,7 +68,10 @@ class BudgetLimitBreached:
 
 # ── Event handlers (subscribed via bootstrap) ─────────────────────────────────
 
-async def handle_transaction_categorized(payload: EventPayload, session: AsyncSession) -> None:
+
+async def handle_transaction_categorized(
+    payload: EventPayload, session: AsyncSession
+) -> None:
     """
     Accumulate spend for budget goals when a transaction is categorised.
     Skip transfers. Check 80%/100% thresholds and fire deduplicated alerts.
@@ -78,6 +82,7 @@ async def handle_transaction_categorized(payload: EventPayload, session: AsyncSe
     user_id = uuid.UUID(payload["user_id"])
     txn_date_str: str = payload.get("date") or payload.get("transaction_date") or ""
     from datetime import date as date_type
+
     txn_date = date_type.fromisoformat(txn_date_str)
     items = payload.get("items", [])
     transaction_type = payload.get("transaction_type", "debit")
@@ -91,7 +96,9 @@ async def handle_transaction_categorized(payload: EventPayload, session: AsyncSe
     )
 
 
-async def handle_transaction_updated(payload: EventPayload, session: AsyncSession) -> None:
+async def handle_transaction_updated(
+    payload: EventPayload, session: AsyncSession
+) -> None:
     """
     Adjust budget spend retroactively when a transaction's category changes.
     """
@@ -101,6 +108,7 @@ async def handle_transaction_updated(payload: EventPayload, session: AsyncSessio
     user_id = uuid.UUID(payload["user_id"])
     txn_date_str: str = payload.get("date") or payload.get("transaction_date") or ""
     from datetime import date as date_type
+
     txn_date = date_type.fromisoformat(txn_date_str)
     old_items = payload.get("old_items", [])
     new_items = payload.get("new_items", [])

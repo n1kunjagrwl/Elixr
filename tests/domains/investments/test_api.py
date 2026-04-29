@@ -5,6 +5,7 @@ Uses httpx.AsyncClient against a minimal FastAPI app with:
 - The InvestmentsService dependency overridden per test via dependency_overrides
 - Auth middleware present; authenticated endpoints require a valid Bearer token
 """
+
 from __future__ import annotations
 
 import uuid
@@ -12,14 +13,19 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import USER_ID, SESSION_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    USER_ID,
+    SESSION_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 from elixir.platform.security import create_access_token
 
 
 # ── App builder ────────────────────────────────────────────────────────────────
+
 
 def _build_investments_app(mock_service, settings=None):
     """
@@ -32,7 +38,10 @@ def _build_investments_app(mock_service, settings=None):
     from contextlib import asynccontextmanager
     from fastapi import FastAPI, Request
     from fastapi.responses import JSONResponse
-    from elixir.domains.investments.api import router as investments_router, get_investments_service
+    from elixir.domains.investments.api import (
+        router as investments_router,
+        get_investments_service,
+    )
     from elixir.shared.exceptions import ElixirError
     from elixir.runtime.middleware import AuthMiddleware, RequestLoggingMiddleware
     from fastapi.exceptions import RequestValidationError
@@ -71,15 +80,22 @@ def _build_investments_app(mock_service, settings=None):
             entry = dict(err)
             if "ctx" in entry:
                 ctx = dict(entry["ctx"])
-                entry["ctx"] = {k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()}
+                entry["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()
+                }
             safe.append(entry)
         return safe
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     return app
@@ -90,8 +106,10 @@ def _make_auth_header(settings=None) -> dict[str, str]:
     if settings is None:
         settings = make_test_settings()
     token, _ = create_access_token(
-        str(USER_ID), str(SESSION_ID),
-        settings.jwt_secret, settings.access_token_expiry_minutes,
+        str(USER_ID),
+        str(SESSION_ID),
+        settings.jwt_secret,
+        settings.access_token_expiry_minutes,
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -106,6 +124,7 @@ def _make_mock_service(**overrides):
 
 def _make_instrument_response(**overrides):
     from elixir.domains.investments.schemas import InstrumentResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         name="Reliance Industries",
@@ -125,6 +144,7 @@ def _make_instrument_response(**overrides):
 
 def _make_holding_response(**overrides):
     from elixir.domains.investments.schemas import HoldingResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         user_id=USER_ID,
@@ -144,6 +164,7 @@ def _make_holding_response(**overrides):
 
 def _make_sip_response(**overrides):
     from elixir.domains.investments.schemas import SIPResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         user_id=USER_ID,
@@ -162,6 +183,7 @@ def _make_sip_response(**overrides):
 
 def _make_fd_response(**overrides):
     from elixir.domains.investments.schemas import FDDetailsResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         holding_id=uuid.uuid4(),
@@ -180,6 +202,7 @@ def _make_fd_response(**overrides):
 
 # ── GET /investments/instruments ───────────────────────────────────────────────
 
+
 class TestGetInstruments:
     async def test_get_instruments_returns_200(self):
         """Authenticated GET /investments/instruments → 200 with instrument list."""
@@ -188,7 +211,9 @@ class TestGetInstruments:
         svc = _make_mock_service(search_instruments=AsyncMock(return_value=instruments))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/investments/instruments",
                 params={"q": "Reliance"},
@@ -204,6 +229,7 @@ class TestGetInstruments:
 
 # ── POST /investments/instruments ──────────────────────────────────────────────
 
+
 class TestPostInstrument:
     async def test_post_instrument_returns_201(self):
         """Valid instrument body → 201 with InstrumentResponse."""
@@ -212,10 +238,16 @@ class TestPostInstrument:
         svc = _make_mock_service(create_instrument=AsyncMock(return_value=instrument))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/investments/instruments",
-                json={"name": "Reliance Industries", "type": "stock", "currency": "INR"},
+                json={
+                    "name": "Reliance Industries",
+                    "type": "stock",
+                    "currency": "INR",
+                },
                 headers=_make_auth_header(settings),
             )
 
@@ -229,7 +261,9 @@ class TestPostInstrument:
         svc = _make_mock_service()
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/investments/instruments",
                 json={"ticker": "RELIANCE"},  # missing name, type, currency
@@ -241,6 +275,7 @@ class TestPostInstrument:
 
 # ── GET /investments/holdings ──────────────────────────────────────────────────
 
+
 class TestGetHoldings:
     async def test_get_holdings_returns_200(self):
         """Authenticated GET /investments/holdings → 200 with holding list."""
@@ -249,7 +284,9 @@ class TestGetHoldings:
         svc = _make_mock_service(list_holdings=AsyncMock(return_value=holdings))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/investments/holdings",
                 headers=_make_auth_header(settings),
@@ -263,6 +300,7 @@ class TestGetHoldings:
 
 # ── POST /investments/holdings ─────────────────────────────────────────────────
 
+
 class TestPostHolding:
     async def test_post_holding_returns_201(self):
         """Valid holding body → 201 with HoldingResponse."""
@@ -272,7 +310,9 @@ class TestPostHolding:
         svc = _make_mock_service(add_holding=AsyncMock(return_value=holding))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/investments/holdings",
                 json={"instrument_id": str(instrument_id)},
@@ -291,7 +331,9 @@ class TestPostHolding:
         )
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/investments/holdings",
                 json={"instrument_id": str(uuid.uuid4())},
@@ -310,7 +352,9 @@ class TestPostHolding:
         )
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/investments/holdings",
                 json={"instrument_id": str(uuid.uuid4())},
@@ -322,6 +366,7 @@ class TestPostHolding:
 
 # ── PATCH /investments/holdings/{id} ──────────────────────────────────────────
 
+
 class TestPatchHolding:
     async def test_patch_holding_returns_200(self):
         """Valid partial update → 200 with HoldingResponse."""
@@ -331,7 +376,9 @@ class TestPatchHolding:
         svc = _make_mock_service(edit_holding=AsyncMock(return_value=holding))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/investments/holdings/{holding_id}",
                 json={"units": "15.000000"},
@@ -350,7 +397,9 @@ class TestPatchHolding:
         )
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/investments/holdings/{uuid.uuid4()}",
                 json={"units": "15.000000"},
@@ -362,6 +411,7 @@ class TestPatchHolding:
 
 # ── DELETE /investments/holdings/{id} ─────────────────────────────────────────
 
+
 class TestDeleteHolding:
     async def test_delete_holding_returns_204(self):
         """Successful removal → 204 No Content."""
@@ -369,7 +419,9 @@ class TestDeleteHolding:
         svc = _make_mock_service(remove_holding=AsyncMock(return_value=None))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/investments/holdings/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -387,7 +439,9 @@ class TestDeleteHolding:
         )
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/investments/holdings/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -398,6 +452,7 @@ class TestDeleteHolding:
 
 # ── POST /investments/holdings/{holding_id}/fd ────────────────────────────────
 
+
 class TestPostFDDetails:
     async def test_post_fd_details_returns_201(self):
         """Valid FD body → 201 with FDDetailsResponse."""
@@ -407,7 +462,9 @@ class TestPostFDDetails:
         svc = _make_mock_service(add_fd_details=AsyncMock(return_value=fd))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/investments/holdings/{holding_id}/fd",
                 json={
@@ -433,7 +490,9 @@ class TestPostFDDetails:
         )
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/investments/holdings/{uuid.uuid4()}/fd",
                 json={
@@ -455,11 +514,15 @@ class TestPostFDDetails:
 
         settings = make_test_settings()
         svc = _make_mock_service(
-            add_fd_details=AsyncMock(side_effect=FDDetailsAlreadyExistError("Already exists"))
+            add_fd_details=AsyncMock(
+                side_effect=FDDetailsAlreadyExistError("Already exists")
+            )
         )
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/investments/holdings/{uuid.uuid4()}/fd",
                 json={
@@ -478,6 +541,7 @@ class TestPostFDDetails:
 
 # ── GET /investments/history ───────────────────────────────────────────────────
 
+
 class TestGetHistory:
     async def test_get_history_returns_200(self):
         """Authenticated GET /investments/history → 200 with snapshot list."""
@@ -485,10 +549,14 @@ class TestGetHistory:
         snapshots = [
             {"snapshot_date": "2024-01-01", "total_value": "100000.00"},
         ]
-        svc = _make_mock_service(get_portfolio_history=AsyncMock(return_value=snapshots))
+        svc = _make_mock_service(
+            get_portfolio_history=AsyncMock(return_value=snapshots)
+        )
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/investments/history",
                 params={"from_date": "2024-01-01", "to_date": "2024-01-31"},
@@ -503,6 +571,7 @@ class TestGetHistory:
 
 # ── GET /investments/sip ───────────────────────────────────────────────────────
 
+
 class TestGetSIPs:
     async def test_get_sips_returns_200(self):
         """Authenticated GET /investments/sip → 200 with SIP list."""
@@ -511,7 +580,9 @@ class TestGetSIPs:
         svc = _make_mock_service(list_sips=AsyncMock(return_value=sips))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/investments/sip",
                 headers=_make_auth_header(settings),
@@ -525,6 +596,7 @@ class TestGetSIPs:
 
 # ── POST /investments/sip ──────────────────────────────────────────────────────
 
+
 class TestPostSIP:
     async def test_post_sip_returns_201(self):
         """Valid SIP registration body → 201 with SIPResponse."""
@@ -533,7 +605,9 @@ class TestPostSIP:
         svc = _make_mock_service(register_sip=AsyncMock(return_value=sip))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/investments/sip",
                 json={
@@ -552,7 +626,9 @@ class TestPostSIP:
         svc = _make_mock_service()
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/investments/sip",
                 json={
@@ -568,6 +644,7 @@ class TestPostSIP:
 
 # ── PATCH /investments/sip/{id} ───────────────────────────────────────────────
 
+
 class TestPatchSIP:
     async def test_patch_sip_returns_200(self):
         """Valid partial SIP update → 200."""
@@ -577,7 +654,9 @@ class TestPatchSIP:
         svc = _make_mock_service(edit_sip=AsyncMock(return_value=sip))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/investments/sip/{sip_id}",
                 json={"amount": "7500.00"},
@@ -596,7 +675,9 @@ class TestPatchSIP:
         )
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/investments/sip/{uuid.uuid4()}",
                 json={"amount": "7500.00"},
@@ -608,6 +689,7 @@ class TestPatchSIP:
 
 # ── DELETE /investments/sip/{id} ──────────────────────────────────────────────
 
+
 class TestDeleteSIP:
     async def test_delete_sip_returns_204(self):
         """Successful SIP deactivation → 204."""
@@ -615,7 +697,9 @@ class TestDeleteSIP:
         svc = _make_mock_service(deactivate_sip=AsyncMock(return_value=None))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/investments/sip/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -633,7 +717,9 @@ class TestDeleteSIP:
         )
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/investments/sip/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -644,6 +730,7 @@ class TestDeleteSIP:
 
 # ── POST /investments/sip/{id}/confirm ────────────────────────────────────────
 
+
 class TestConfirmSIP:
     async def test_confirm_sip_returns_200(self):
         """Valid confirm SIP body → 200."""
@@ -653,7 +740,9 @@ class TestConfirmSIP:
         svc = _make_mock_service(confirm_sip_link=AsyncMock(return_value=None))
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/investments/sip/{sip_id}/confirm",
                 json={"transaction_id": str(transaction_id)},
@@ -672,7 +761,9 @@ class TestConfirmSIP:
         )
         app = _build_investments_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/investments/sip/{uuid.uuid4()}/confirm",
                 json={"transaction_id": str(uuid.uuid4())},
@@ -684,13 +775,16 @@ class TestConfirmSIP:
 
 # ── Auth guard tests ───────────────────────────────────────────────────────────
 
+
 class TestUnauthenticated:
     async def test_unauthenticated_returns_401(self):
         """No auth header → 401 for all investments endpoints."""
         svc = _make_mock_service()
         app = _build_investments_app(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/investments/holdings")
 
         assert resp.status_code == 401

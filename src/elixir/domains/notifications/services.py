@@ -3,11 +3,11 @@ NotificationsService — converts domain events into user-facing in-app notifica
 
 No business logic beyond message formatting and idempotency checks.
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import date
-from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 

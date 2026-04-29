@@ -4,6 +4,7 @@ Service-layer tests for the accounts domain.
 All external dependencies (DB session, repository) are mocked.
 No real database or network connections are made.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -16,8 +17,10 @@ from tests.conftest import USER_ID, make_test_settings
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_service(mock_db):
     from elixir.domains.accounts.services import AccountsService
+
     return AccountsService(db=mock_db, settings=make_test_settings())
 
 
@@ -75,6 +78,7 @@ def _make_credit_card(
 
 # ── add_bank_account tests ────────────────────────────────────────────────────
 
+
 class TestAddBankAccount:
     async def test_add_bank_account_creates_row_and_outbox_event(self, mock_db):
         """Happy path: creating a bank account persists the row and writes an outbox event."""
@@ -91,9 +95,18 @@ class TestAddBankAccount:
             last4="1234",
         )
 
-        with patch.object(svc._repo, "create_bank_account", new=AsyncMock(return_value=bank)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(side_effect=lambda et, p: outbox_event_captured.append((et, p)))):
-
+        with (
+            patch.object(
+                svc._repo, "create_bank_account", new=AsyncMock(return_value=bank)
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(
+                    side_effect=lambda et, p: outbox_event_captured.append((et, p))
+                ),
+            ),
+        ):
             result = await svc.add_bank_account(USER_ID, data)
 
         assert result.nickname == "My SBI Savings"
@@ -109,12 +122,15 @@ class TestAddBankAccount:
         assert payload["user_id"] == str(USER_ID)
         assert payload["account_kind"] == "bank"
 
-    async def test_add_bank_account_invalid_account_type_raises_validation_error(self, mock_db):
+    async def test_add_bank_account_invalid_account_type_raises_validation_error(
+        self, mock_db
+    ):
         """Supplying an invalid account_type raises a Pydantic validation error."""
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
             from elixir.domains.accounts.schemas import BankAccountCreate
+
             BankAccountCreate(
                 nickname="Test",
                 bank_name="SBI",
@@ -123,6 +139,7 @@ class TestAddBankAccount:
 
 
 # ── add_credit_card tests ─────────────────────────────────────────────────────
+
 
 class TestAddCreditCard:
     async def test_add_credit_card_creates_row_and_outbox_event(self, mock_db):
@@ -142,9 +159,18 @@ class TestAddCreditCard:
             billing_cycle_day=15,
         )
 
-        with patch.object(svc._repo, "create_credit_card", new=AsyncMock(return_value=card)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(side_effect=lambda et, p: outbox_event_captured.append((et, p)))):
-
+        with (
+            patch.object(
+                svc._repo, "create_credit_card", new=AsyncMock(return_value=card)
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(
+                    side_effect=lambda et, p: outbox_event_captured.append((et, p))
+                ),
+            ),
+        ):
             result = await svc.add_credit_card(USER_ID, data)
 
         assert result.nickname == "My HDFC CC"
@@ -156,24 +182,30 @@ class TestAddCreditCard:
         assert event_type == "accounts.AccountLinked"
         assert payload["account_kind"] == "credit_card"
 
-    async def test_add_credit_card_invalid_network_raises_validation_error(self, mock_db):
+    async def test_add_credit_card_invalid_network_raises_validation_error(
+        self, mock_db
+    ):
         """Supplying an invalid card_network raises a Pydantic validation error."""
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
             from elixir.domains.accounts.schemas import CreditCardCreate
+
             CreditCardCreate(
                 nickname="Test",
                 bank_name="HDFC",
                 card_network="diners",  # not in enum
             )
 
-    async def test_add_credit_card_invalid_billing_cycle_day_raises_validation_error(self, mock_db):
+    async def test_add_credit_card_invalid_billing_cycle_day_raises_validation_error(
+        self, mock_db
+    ):
         """billing_cycle_day outside 1-28 raises a Pydantic validation error."""
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
             from elixir.domains.accounts.schemas import CreditCardCreate
+
             CreditCardCreate(
                 nickname="Test",
                 bank_name="HDFC",
@@ -182,6 +214,7 @@ class TestAddCreditCard:
 
         with pytest.raises(ValidationError):
             from elixir.domains.accounts.schemas import CreditCardCreate
+
             CreditCardCreate(
                 nickname="Test",
                 bank_name="HDFC",
@@ -190,6 +223,7 @@ class TestAddCreditCard:
 
 
 # ── edit_bank_account tests ───────────────────────────────────────────────────
+
 
 class TestEditBankAccount:
     async def test_edit_bank_account_updates_fields(self, mock_db):
@@ -202,9 +236,14 @@ class TestEditBankAccount:
 
         data = BankAccountUpdate(nickname="Renamed Account")
 
-        with patch.object(svc._repo, "get_bank_account", new=AsyncMock(return_value=bank)), \
-             patch.object(svc._repo, "update_bank_account", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(
+                svc._repo, "get_bank_account", new=AsyncMock(return_value=bank)
+            ),
+            patch.object(
+                svc._repo, "update_bank_account", new=AsyncMock(return_value=None)
+            ),
+        ):
             result = await svc.edit_bank_account(USER_ID, account_id, data)
 
         assert result is not None
@@ -217,7 +256,9 @@ class TestEditBankAccount:
 
         svc = _make_service(mock_db)
 
-        with patch.object(svc._repo, "get_bank_account", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_bank_account", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(AccountNotFoundError):
                 await svc.edit_bank_account(USER_ID, uuid.uuid4(), BankAccountUpdate())
 
@@ -232,12 +273,15 @@ class TestEditBankAccount:
 
         # The repo filters by (user_id, id) — if the requesting user doesn't own the
         # account the repo returns None (it was filtered out), which produces a 404.
-        with patch.object(svc._repo, "get_bank_account", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_bank_account", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(AccountNotFoundError):
                 await svc.edit_bank_account(USER_ID, bank.id, BankAccountUpdate())
 
 
 # ── edit_credit_card tests ────────────────────────────────────────────────────
+
 
 class TestEditCreditCard:
     async def test_edit_credit_card_updates_fields(self, mock_db):
@@ -249,9 +293,14 @@ class TestEditCreditCard:
 
         data = CreditCardUpdate(nickname="New Nickname", billing_cycle_day=10)
 
-        with patch.object(svc._repo, "get_credit_card", new=AsyncMock(return_value=card)), \
-             patch.object(svc._repo, "update_credit_card", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(
+                svc._repo, "get_credit_card", new=AsyncMock(return_value=card)
+            ),
+            patch.object(
+                svc._repo, "update_credit_card", new=AsyncMock(return_value=None)
+            ),
+        ):
             result = await svc.edit_credit_card(USER_ID, card.id, data)
 
         assert result is not None
@@ -260,6 +309,7 @@ class TestEditCreditCard:
 
 # ── deactivate_bank_account tests ─────────────────────────────────────────────
 
+
 class TestDeactivateBankAccount:
     async def test_deactivate_bank_account_sets_is_active_false(self, mock_db):
         """Deactivating a bank account writes a soft delete and an AccountRemoved event."""
@@ -267,10 +317,21 @@ class TestDeactivateBankAccount:
         bank = _make_bank_account()
         outbox_event_captured = []
 
-        with patch.object(svc._repo, "get_bank_account", new=AsyncMock(return_value=bank)), \
-             patch.object(svc._repo, "deactivate_bank_account", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(side_effect=lambda et, p: outbox_event_captured.append((et, p)))):
-
+        with (
+            patch.object(
+                svc._repo, "get_bank_account", new=AsyncMock(return_value=bank)
+            ),
+            patch.object(
+                svc._repo, "deactivate_bank_account", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(
+                    side_effect=lambda et, p: outbox_event_captured.append((et, p))
+                ),
+            ),
+        ):
             await svc.deactivate_bank_account(USER_ID, bank.id)
 
         mock_db.commit.assert_called_once()
@@ -285,12 +346,15 @@ class TestDeactivateBankAccount:
 
         svc = _make_service(mock_db)
 
-        with patch.object(svc._repo, "get_bank_account", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_bank_account", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(AccountNotFoundError):
                 await svc.deactivate_bank_account(USER_ID, uuid.uuid4())
 
 
 # ── deactivate_credit_card tests ──────────────────────────────────────────────
+
 
 class TestDeactivateCreditCard:
     async def test_deactivate_credit_card_sets_is_active_false(self, mock_db):
@@ -299,10 +363,21 @@ class TestDeactivateCreditCard:
         card = _make_credit_card()
         outbox_event_captured = []
 
-        with patch.object(svc._repo, "get_credit_card", new=AsyncMock(return_value=card)), \
-             patch.object(svc._repo, "deactivate_credit_card", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(side_effect=lambda et, p: outbox_event_captured.append((et, p)))):
-
+        with (
+            patch.object(
+                svc._repo, "get_credit_card", new=AsyncMock(return_value=card)
+            ),
+            patch.object(
+                svc._repo, "deactivate_credit_card", new=AsyncMock(return_value=None)
+            ),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(
+                    side_effect=lambda et, p: outbox_event_captured.append((et, p))
+                ),
+            ),
+        ):
             await svc.deactivate_credit_card(USER_ID, card.id)
 
         mock_db.commit.assert_called_once()
@@ -313,6 +388,7 @@ class TestDeactivateCreditCard:
 
 
 # ── list_accounts tests ───────────────────────────────────────────────────────
+
 
 class TestListAccounts:
     async def test_list_accounts_returns_only_active_accounts_for_user(self, mock_db):
@@ -344,7 +420,9 @@ class TestListAccounts:
             },
         ]
 
-        with patch.object(svc._repo, "list_accounts", new=AsyncMock(return_value=raw_rows)):
+        with patch.object(
+            svc._repo, "list_accounts", new=AsyncMock(return_value=raw_rows)
+        ):
             results = await svc.list_accounts(USER_ID)
 
         assert len(results) == 2

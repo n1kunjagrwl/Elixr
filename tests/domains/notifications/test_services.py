@@ -4,10 +4,11 @@ Service-layer tests for the notifications domain.
 All external dependencies (DB session, repository) are mocked.
 No real database or network connections are made.
 """
+
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -17,8 +18,10 @@ from tests.conftest import USER_ID
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_service(mock_db):
     from elixir.domains.notifications.services import NotificationsService
+
     return NotificationsService(db=mock_db)
 
 
@@ -51,15 +54,17 @@ def _make_notification(
 
 # ── TestListNotifications ──────────────────────────────────────────────────────
 
+
 class TestListNotifications:
     async def test_list_all(self, mock_db):
         """list_notifications returns all notifications for user."""
-        from elixir.domains.notifications.schemas import NotificationResponse
 
         svc = _make_service(mock_db)
         notifications = [_make_notification(), _make_notification()]
 
-        with patch.object(svc._repo, "list_notifications", new=AsyncMock(return_value=notifications)):
+        with patch.object(
+            svc._repo, "list_notifications", new=AsyncMock(return_value=notifications)
+        ):
             results = await svc.list_notifications(USER_ID)
 
         assert len(results) == 2
@@ -73,7 +78,9 @@ class TestListNotifications:
         with patch.object(svc._repo, "list_notifications", new=mock_list):
             results = await svc.list_notifications(USER_ID, unread_only=True)
 
-        mock_list.assert_called_once_with(USER_ID, unread_only=True, page=1, page_size=20)
+        mock_list.assert_called_once_with(
+            USER_ID, unread_only=True, page=1, page_size=20
+        )
         assert len(results) == 1
 
     async def test_list_pagination(self, mock_db):
@@ -84,10 +91,13 @@ class TestListNotifications:
         with patch.object(svc._repo, "list_notifications", new=mock_list):
             await svc.list_notifications(USER_ID, page=3, page_size=10)
 
-        mock_list.assert_called_once_with(USER_ID, unread_only=False, page=3, page_size=10)
+        mock_list.assert_called_once_with(
+            USER_ID, unread_only=False, page=3, page_size=10
+        )
 
 
 # ── TestMarkRead ───────────────────────────────────────────────────────────────
+
 
 class TestMarkRead:
     async def test_mark_read_sets_read_at(self, mock_db):
@@ -99,8 +109,10 @@ class TestMarkRead:
         mock_get = AsyncMock(return_value=notification)
         mock_mark = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "get_notification", new=mock_get), \
-             patch.object(svc._repo, "mark_read", new=mock_mark):
+        with (
+            patch.object(svc._repo, "get_notification", new=mock_get),
+            patch.object(svc._repo, "mark_read", new=mock_mark),
+        ):
             await svc.mark_read(USER_ID, notification_id)
 
         mock_mark.assert_called_once_with(notification)
@@ -111,7 +123,9 @@ class TestMarkRead:
 
         svc = _make_service(mock_db)
 
-        with patch.object(svc._repo, "get_notification", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_notification", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(NotificationNotFoundError):
                 await svc.mark_read(USER_ID, uuid.uuid4())
 
@@ -123,8 +137,10 @@ class TestMarkRead:
         mock_get = AsyncMock(return_value=already_read)
         mock_mark = AsyncMock(return_value=None)
 
-        with patch.object(svc._repo, "get_notification", new=mock_get), \
-             patch.object(svc._repo, "mark_read", new=mock_mark):
+        with (
+            patch.object(svc._repo, "get_notification", new=mock_get),
+            patch.object(svc._repo, "mark_read", new=mock_mark),
+        ):
             # Should not raise
             await svc.mark_read(USER_ID, already_read.id)
 
@@ -133,6 +149,7 @@ class TestMarkRead:
 
 
 # ── TestMarkAllRead ────────────────────────────────────────────────────────────
+
 
 class TestMarkAllRead:
     async def test_mark_all_read_returns_count(self, mock_db):
@@ -147,6 +164,7 @@ class TestMarkAllRead:
 
 # ── TestIdempotency ────────────────────────────────────────────────────────────
 
+
 class TestIdempotency:
     async def test_create_if_not_exists_skips_duplicate(self, mock_db):
         """When notification_exists returns True, create_notification is NOT called."""
@@ -155,8 +173,10 @@ class TestIdempotency:
         mock_exists = AsyncMock(return_value=True)
         mock_create = AsyncMock(return_value=_make_notification())
 
-        with patch.object(svc._repo, "notification_exists", new=mock_exists), \
-             patch.object(svc._repo, "create_notification", new=mock_create):
+        with (
+            patch.object(svc._repo, "notification_exists", new=mock_exists),
+            patch.object(svc._repo, "create_notification", new=mock_create),
+        ):
             await svc._create_if_not_exists(
                 user_id=USER_ID,
                 type_="accounts.AccountLinked",
@@ -175,8 +195,10 @@ class TestIdempotency:
         mock_exists = AsyncMock(return_value=False)
         mock_create = AsyncMock(return_value=_make_notification())
 
-        with patch.object(svc._repo, "notification_exists", new=mock_exists), \
-             patch.object(svc._repo, "create_notification", new=mock_create):
+        with (
+            patch.object(svc._repo, "notification_exists", new=mock_exists),
+            patch.object(svc._repo, "create_notification", new=mock_create),
+        ):
             await svc._create_if_not_exists(
                 user_id=USER_ID,
                 type_="accounts.AccountLinked",
@@ -190,6 +212,7 @@ class TestIdempotency:
 
 
 # ── TestEventHandlers ──────────────────────────────────────────────────────────
+
 
 class TestEventHandlers:
     async def test_account_linked_creates_notification(self, mock_db):
@@ -236,7 +259,13 @@ class TestEventHandlers:
 
         create_calls = []
 
-        async def fake_exists(user_id, type_, primary_entity_id=None, secondary_entity_id=None, period_start=None):
+        async def fake_exists(
+            user_id,
+            type_,
+            primary_entity_id=None,
+            secondary_entity_id=None,
+            period_start=None,
+        ):
             # Returns True on second call (simulating duplicate)
             return len(create_calls) > 0
 

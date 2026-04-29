@@ -14,6 +14,7 @@ router = APIRouter()
 
 # ── Service factory ───────────────────────────────────────────────────────────
 
+
 def get_fx_service(
     db=Depends(get_db_session),
 ) -> FXService:
@@ -24,6 +25,7 @@ FXSvc = Annotated[FXService, Depends(get_fx_service)]
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
 
 @router.get("/rates", response_model=list[FXRateResponse])
 async def get_rates(ctx: RequestCtx, svc: FXSvc):
@@ -37,8 +39,12 @@ async def convert_currency(
     ctx: RequestCtx,
     svc: FXSvc,
     amount: Decimal = Query(..., description="Amount to convert"),
-    from_currency: str = Query(..., alias="from", description="Source currency code (e.g. USD)"),
-    to_currency: str = Query(..., alias="to", description="Target currency code (e.g. INR)"),
+    from_currency: str = Query(
+        ..., alias="from", description="Source currency code (e.g. USD)"
+    ),
+    to_currency: str = Query(
+        ..., alias="to", description="Target currency code (e.g. INR)"
+    ),
 ):
     """
     Convert an amount between two currencies using the cached FX rates.

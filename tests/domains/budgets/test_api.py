@@ -4,6 +4,7 @@ API-layer tests for the budgets domain.
 Uses httpx.AsyncClient against a minimal FastAPI app with the BudgetsService
 dependency overridden per test.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -11,14 +12,19 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import USER_ID, SESSION_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    USER_ID,
+    SESSION_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 from elixir.platform.security import create_access_token
 
 
 # ── App builder ────────────────────────────────────────────────────────────────
+
 
 def _build_budgets_app(mock_service, settings=None):
     """Build a minimal FastAPI app with BudgetsService overridden."""
@@ -67,15 +73,22 @@ def _build_budgets_app(mock_service, settings=None):
             entry = dict(err)
             if "ctx" in entry:
                 ctx = dict(entry["ctx"])
-                entry["ctx"] = {k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()}
+                entry["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()
+                }
             safe.append(entry)
         return safe
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     return app
@@ -85,8 +98,10 @@ def _make_auth_header(settings=None) -> dict[str, str]:
     if settings is None:
         settings = make_test_settings()
     token, _ = create_access_token(
-        str(USER_ID), str(SESSION_ID),
-        settings.jwt_secret, settings.access_token_expiry_minutes,
+        str(USER_ID),
+        str(SESSION_ID),
+        settings.jwt_secret,
+        settings.access_token_expiry_minutes,
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -100,6 +115,7 @@ def _make_mock_service(**overrides):
 
 def _make_goal_with_progress_response(**overrides):
     from elixir.domains.budgets.schemas import BudgetGoalWithProgress
+
     defaults = dict(
         id=uuid.uuid4(),
         user_id=USER_ID,
@@ -124,15 +140,21 @@ def _make_goal_with_progress_response(**overrides):
 
 # ── GET /budgets ───────────────────────────────────────────────────────────────
 
+
 class TestGetBudgets:
     async def test_get_budgets_returns_200(self):
         """Authenticated GET /budgets → 200 with list of goals."""
         settings = make_test_settings()
-        goals = [_make_goal_with_progress_response(), _make_goal_with_progress_response()]
+        goals = [
+            _make_goal_with_progress_response(),
+            _make_goal_with_progress_response(),
+        ]
         svc = _make_mock_service(list_goals=AsyncMock(return_value=goals))
         app = _build_budgets_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/budgets", headers=_make_auth_header(settings))
 
         assert resp.status_code == 200
@@ -145,13 +167,16 @@ class TestGetBudgets:
         svc = _make_mock_service()
         app = _build_budgets_app(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/budgets")
 
         assert resp.status_code == 401
 
 
 # ── POST /budgets ──────────────────────────────────────────────────────────────
+
 
 class TestPostBudget:
     async def test_post_budget_returns_201(self):
@@ -161,7 +186,9 @@ class TestPostBudget:
         svc = _make_mock_service(create_goal=AsyncMock(return_value=response_obj))
         app = _build_budgets_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/budgets",
                 json={
@@ -183,11 +210,15 @@ class TestPostBudget:
 
         settings = make_test_settings()
         svc = _make_mock_service(
-            create_goal=AsyncMock(side_effect=InvalidPeriodConfigError("Custom period requires dates"))
+            create_goal=AsyncMock(
+                side_effect=InvalidPeriodConfigError("Custom period requires dates")
+            )
         )
         app = _build_budgets_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/budgets",
                 json={
@@ -204,6 +235,7 @@ class TestPostBudget:
 
 # ── GET /budgets/{id} ─────────────────────────────────────────────────────────
 
+
 class TestGetBudget:
     async def test_get_budget_returns_200(self):
         """Authenticated GET /budgets/{id} → 200."""
@@ -213,8 +245,12 @@ class TestGetBudget:
         svc = _make_mock_service(get_goal=AsyncMock(return_value=response_obj))
         app = _build_budgets_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.get(f"/budgets/{goal_id}", headers=_make_auth_header(settings))
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                f"/budgets/{goal_id}", headers=_make_auth_header(settings)
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -230,8 +266,12 @@ class TestGetBudget:
         )
         app = _build_budgets_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.get(f"/budgets/{uuid.uuid4()}", headers=_make_auth_header(settings))
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                f"/budgets/{uuid.uuid4()}", headers=_make_auth_header(settings)
+            )
 
         assert resp.status_code == 404
         assert resp.json()["error"] == "BUDGET_GOAL_NOT_FOUND"
@@ -239,16 +279,21 @@ class TestGetBudget:
 
 # ── PATCH /budgets/{id} ───────────────────────────────────────────────────────
 
+
 class TestPatchBudget:
     async def test_patch_budget_returns_200(self):
         """Valid partial update → 200 with updated goal."""
         settings = make_test_settings()
         goal_id = uuid.uuid4()
-        response_obj = _make_goal_with_progress_response(id=goal_id, limit_amount=Decimal("20000.00"))
+        response_obj = _make_goal_with_progress_response(
+            id=goal_id, limit_amount=Decimal("20000.00")
+        )
         svc = _make_mock_service(edit_goal=AsyncMock(return_value=response_obj))
         app = _build_budgets_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/budgets/{goal_id}",
                 json={"limit_amount": "20000.00"},
@@ -262,6 +307,7 @@ class TestPatchBudget:
 
 # ── DELETE /budgets/{id} ──────────────────────────────────────────────────────
 
+
 class TestDeleteBudget:
     async def test_delete_budget_returns_204(self):
         """Successful deactivation → 204 No Content."""
@@ -270,7 +316,11 @@ class TestDeleteBudget:
         app = _build_budgets_app(svc, settings)
         goal_id = uuid.uuid4()
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.delete(f"/budgets/{goal_id}", headers=_make_auth_header(settings))
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.delete(
+                f"/budgets/{goal_id}", headers=_make_auth_header(settings)
+            )
 
         assert resp.status_code == 204

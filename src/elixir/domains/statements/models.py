@@ -44,7 +44,10 @@ class StatementUpload(Base, IDMixin):
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     account_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), nullable=False, index=True
@@ -55,9 +58,7 @@ class StatementUpload(Base, IDMixin):
     original_filename: Mapped[str | None] = mapped_column(Text, nullable=True)
     period_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="uploaded"
-    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="uploaded")
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -81,9 +82,7 @@ class ExtractionJob(Base, IDMixin, TimestampMixin):
         index=True,
     )
     temporal_workflow_id: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(30), nullable=False, default="queued"
-    )
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="queued")
     total_rows: Mapped[int | None] = mapped_column(Integer, nullable=True)
     classified_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -112,25 +111,27 @@ class RawExtractedRow(Base, IDMixin, TimestampMixin):
     row_index: Mapped[int] = mapped_column(Integer, nullable=False)
     date: Mapped[date | None] = mapped_column(Date, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    debit_amount: Mapped[Decimal | None] = mapped_column(
-        Numeric(15, 2), nullable=True
-    )
-    credit_amount: Mapped[Decimal | None] = mapped_column(
-        Numeric(15, 2), nullable=True
-    )
+    debit_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    credit_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     balance: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     classification_status: Mapped[str] = mapped_column(
         String(30), nullable=False, default="pending"
     )
     ai_suggested_category_id: Mapped[uuid.UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True,
     )
     ai_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     final_category_id: Mapped[uuid.UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True,
     )
     transaction_id: Mapped[uuid.UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("transactions.id", ondelete="SET NULL"),
+        nullable=True,
     )
 
 

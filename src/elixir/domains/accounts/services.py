@@ -133,8 +133,6 @@ class AccountsService:
 
     # ── Summary (cross-domain read view) ──────────────────────────────────────
 
-    async def list_accounts(
-        self, user_id: uuid.UUID
-    ) -> list[AccountSummaryResponse]:
+    async def list_accounts(self, user_id: uuid.UUID) -> list[AccountSummaryResponse]:
         rows = await self._repo.list_accounts(user_id)
         return [AccountSummaryResponse(**row) for row in rows]

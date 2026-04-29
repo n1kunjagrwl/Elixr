@@ -151,8 +151,6 @@ class CategorizationRepository:
 
     # ── Outbox ────────────────────────────────────────────────────────────────
 
-    async def add_outbox_event(
-        self, event_type: str, payload: dict[str, Any]
-    ) -> None:
+    async def add_outbox_event(self, event_type: str, payload: dict[str, Any]) -> None:
         row = CategorizationOutbox(event_type=event_type, payload=payload)
         self._db.add(row)

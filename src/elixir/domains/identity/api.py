@@ -20,6 +20,7 @@ _COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 days in seconds
 
 # ── Service factory ───────────────────────────────────────────────────
 
+
 def get_identity_service(
     request: Request,
     db=Depends(get_db_session),
@@ -36,6 +37,7 @@ IdentitySvc = Annotated[IdentityServiceProtocol, Depends(get_identity_service)]
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────
+
 
 @router.post("/request-otp", response_model=OTPRequestedResponse)
 async def request_otp(body: RequestOTPBody, svc: IdentitySvc):
@@ -60,6 +62,7 @@ async def verify_otp(body: VerifyOTPBody, response: Response, svc: IdentitySvc):
 async def refresh(request: Request, svc: IdentitySvc):
     refresh_token = request.cookies.get(_REFRESH_COOKIE)
     from fastapi import HTTPException
+
     if not refresh_token:
         raise HTTPException(status_code=401, detail="No refresh token provided")
     return await svc.refresh_session(refresh_token)
@@ -68,4 +71,6 @@ async def refresh(request: Request, svc: IdentitySvc):
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(ctx: RequestCtx, response: Response, svc: IdentitySvc):
     await svc.logout(ctx.user_id, ctx.session_id)
-    response.delete_cookie(key=_REFRESH_COOKIE, httponly=True, secure=True, samesite="strict")
+    response.delete_cookie(
+        key=_REFRESH_COOKIE, httponly=True, secure=True, samesite="strict"
+    )

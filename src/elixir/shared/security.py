@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 # ── OTP ──────────────────────────────────────────────────────────────
 
+
 def generate_otp() -> str:
     return f"{secrets.randbelow(900000) + 100000:06d}"
 
@@ -21,6 +22,7 @@ def verify_otp_hash(otp: str, hashed: str) -> bool:
 
 
 # ── Encryption (AES-256-GCM) ─────────────────────────────────────────
+
 
 def encrypt_sensitive(value: str, key_hex: str) -> str:
     """Encrypt a string with AES-256-GCM. Returns base64(nonce + ciphertext)."""

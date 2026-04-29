@@ -4,6 +4,7 @@ Service-layer tests for the categorization domain.
 All external dependencies (DB session, repository, ADK client) are mocked.
 No real database or network connections are made.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -17,8 +18,10 @@ from tests.conftest import USER_ID, make_test_settings
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_service(mock_db):
     from elixir.domains.categorization.services import CategorizationService
+
     return CategorizationService(db=mock_db, settings=make_test_settings())
 
 
@@ -72,6 +75,7 @@ def _make_rule(
 
 # ── list_categories tests ──────────────────────────────────────────────────────
 
+
 class TestListCategories:
     async def test_list_categories_returns_defaults_and_user_custom(self, mock_db):
         """list_categories returns both system defaults and user custom categories."""
@@ -79,7 +83,11 @@ class TestListCategories:
         system_cat = _make_category(user_id=None, name="Food & Dining", is_default=True)
         user_cat = _make_category(user_id=USER_ID, name="My Custom", is_default=False)
 
-        with patch.object(svc._repo, "get_categories_for_user", new=AsyncMock(return_value=[system_cat, user_cat])):
+        with patch.object(
+            svc._repo,
+            "get_categories_for_user",
+            new=AsyncMock(return_value=[system_cat, user_cat]),
+        ):
             results = await svc.list_categories(USER_ID)
 
         assert len(results) == 2
@@ -92,11 +100,15 @@ class TestListCategories:
         svc = _make_service(mock_db)
         # Simulate 22 default categories returned by repo
         defaults = [
-            _make_category(user_id=None, name=f"Default {i}", slug=f"default-{i}", is_default=True)
+            _make_category(
+                user_id=None, name=f"Default {i}", slug=f"default-{i}", is_default=True
+            )
             for i in range(22)
         ]
 
-        with patch.object(svc._repo, "get_categories_for_user", new=AsyncMock(return_value=defaults)):
+        with patch.object(
+            svc._repo, "get_categories_for_user", new=AsyncMock(return_value=defaults)
+        ):
             results = await svc.list_categories(USER_ID)
 
         assert len(results) == 22
@@ -104,21 +116,33 @@ class TestListCategories:
 
 # ── create_category tests ──────────────────────────────────────────────────────
 
+
 class TestCreateCategory:
     async def test_create_category_creates_row_and_outbox_event(self, mock_db):
         """Creating a category persists the row and writes a CategoryCreated outbox event."""
         from elixir.domains.categorization.schemas import CategoryCreate
 
         svc = _make_service(mock_db)
-        cat = _make_category(user_id=USER_ID, name="My Food", slug="my-food", kind="expense")
+        cat = _make_category(
+            user_id=USER_ID, name="My Food", slug="my-food", kind="expense"
+        )
         outbox_events = []
 
         data = CategoryCreate(name="My Food", slug="my-food", kind="expense")
 
-        with patch.object(svc._repo, "get_category_by_slug_for_user", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "create_category", new=AsyncMock(return_value=cat)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p)))):
-
+        with (
+            patch.object(
+                svc._repo,
+                "get_category_by_slug_for_user",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(svc._repo, "create_category", new=AsyncMock(return_value=cat)),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+            ),
+        ):
             result = await svc.create_category(USER_ID, data)
 
         assert result.name == "My Food"
@@ -139,7 +163,11 @@ class TestCreateCategory:
         existing_cat = _make_category(user_id=USER_ID, slug="food-dining")
         data = CategoryCreate(name="Food Again", slug="food-dining", kind="expense")
 
-        with patch.object(svc._repo, "get_category_by_slug_for_user", new=AsyncMock(return_value=existing_cat)):
+        with patch.object(
+            svc._repo,
+            "get_category_by_slug_for_user",
+            new=AsyncMock(return_value=existing_cat),
+        ):
             with pytest.raises(DuplicateSlugError):
                 await svc.create_category(USER_ID, data)
 
@@ -157,6 +185,7 @@ class TestCreateCategory:
 
 # ── update_category tests ──────────────────────────────────────────────────────
 
+
 class TestUpdateCategory:
     async def test_update_category_updates_fields(self, mock_db):
         """Happy path: updating a user-owned, non-default category updates its fields."""
@@ -167,9 +196,14 @@ class TestUpdateCategory:
 
         data = CategoryUpdate(name="New Name", icon="🍔")
 
-        with patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)), \
-             patch.object(svc._repo, "update_category", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(
+                svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)
+            ),
+            patch.object(
+                svc._repo, "update_category", new=AsyncMock(return_value=None)
+            ),
+        ):
             result = await svc.update_category(USER_ID, cat.id, data)
 
         assert result is not None
@@ -181,11 +215,15 @@ class TestUpdateCategory:
         from elixir.shared.exceptions import CannotEditDefaultCategoryError
 
         svc = _make_service(mock_db)
-        default_cat = _make_category(user_id=None, name="Food & Dining", is_default=True)
+        default_cat = _make_category(
+            user_id=None, name="Food & Dining", is_default=True
+        )
 
         data = CategoryUpdate(name="Renamed")
 
-        with patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=default_cat)):
+        with patch.object(
+            svc._repo, "get_category_by_id", new=AsyncMock(return_value=default_cat)
+        ):
             with pytest.raises(CannotEditDefaultCategoryError):
                 await svc.update_category(USER_ID, default_cat.id, data)
 
@@ -196,12 +234,15 @@ class TestUpdateCategory:
 
         svc = _make_service(mock_db)
 
-        with patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_category_by_id", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(CategoryNotFoundError):
                 await svc.update_category(USER_ID, uuid.uuid4(), CategoryUpdate())
 
 
 # ── list_rules tests ───────────────────────────────────────────────────────────
+
 
 class TestListRules:
     async def test_list_rules_returns_rules_ordered_by_priority(self, mock_db):
@@ -210,7 +251,11 @@ class TestListRules:
         rule_high = _make_rule(priority=10, pattern="zomato")
         rule_low = _make_rule(priority=0, pattern="swiggy")
 
-        with patch.object(svc._repo, "get_rules_for_user", new=AsyncMock(return_value=[rule_high, rule_low])):
+        with patch.object(
+            svc._repo,
+            "get_rules_for_user",
+            new=AsyncMock(return_value=[rule_high, rule_low]),
+        ):
             results = await svc.list_rules(USER_ID)
 
         assert len(results) == 2
@@ -219,6 +264,7 @@ class TestListRules:
 
 
 # ── create_rule tests ──────────────────────────────────────────────────────────
+
 
 class TestCreateRule:
     async def test_create_rule_with_valid_regex_succeeds(self, mock_db):
@@ -235,9 +281,12 @@ class TestCreateRule:
             priority=5,
         )
 
-        with patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)), \
-             patch.object(svc._repo, "create_rule", new=AsyncMock(return_value=rule)):
-
+        with (
+            patch.object(
+                svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)
+            ),
+            patch.object(svc._repo, "create_rule", new=AsyncMock(return_value=rule)),
+        ):
             result = await svc.create_rule(USER_ID, data)
 
         assert result is not None
@@ -256,7 +305,9 @@ class TestCreateRule:
             category_id=cat.id,
         )
 
-        with patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)):
+        with patch.object(
+            svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)
+        ):
             with pytest.raises(InvalidRegexPatternError):
                 await svc.create_rule(USER_ID, data)
 
@@ -272,12 +323,15 @@ class TestCreateRule:
             category_id=uuid.uuid4(),
         )
 
-        with patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "get_category_by_id", new=AsyncMock(return_value=None)
+        ):
             with pytest.raises(CategoryNotFoundError):
                 await svc.create_rule(USER_ID, data)
 
 
 # ── update_rule tests ──────────────────────────────────────────────────────────
+
 
 class TestUpdateRule:
     async def test_update_rule_updates_fields(self, mock_db):
@@ -288,9 +342,10 @@ class TestUpdateRule:
         rule = _make_rule(pattern="zomato", priority=0)
         data = RuleUpdate(priority=10)
 
-        with patch.object(svc._repo, "get_rule_by_id", new=AsyncMock(return_value=rule)), \
-             patch.object(svc._repo, "update_rule", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(svc._repo, "get_rule_by_id", new=AsyncMock(return_value=rule)),
+            patch.object(svc._repo, "update_rule", new=AsyncMock(return_value=None)),
+        ):
             result = await svc.update_rule(USER_ID, rule.id, data)
 
         assert result is not None
@@ -299,15 +354,17 @@ class TestUpdateRule:
 
 # ── delete_rule tests ──────────────────────────────────────────────────────────
 
+
 class TestDeleteRule:
     async def test_delete_rule_removes_rule(self, mock_db):
         """Deleting a rule removes it from the database."""
         svc = _make_service(mock_db)
         rule = _make_rule()
 
-        with patch.object(svc._repo, "get_rule_by_id", new=AsyncMock(return_value=rule)), \
-             patch.object(svc._repo, "delete_rule", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(svc._repo, "get_rule_by_id", new=AsyncMock(return_value=rule)),
+            patch.object(svc._repo, "delete_rule", new=AsyncMock(return_value=None)),
+        ):
             await svc.delete_rule(USER_ID, rule.id)
 
         mock_db.commit.assert_called_once()
@@ -315,15 +372,24 @@ class TestDeleteRule:
 
 # ── suggest_category tests ─────────────────────────────────────────────────────
 
+
 class TestSuggestCategory:
     async def test_suggest_category_transfer_type_returns_self_transfer(self, mock_db):
         """If transaction_type='transfer', immediately return Self Transfer with confidence=1.0."""
         svc = _make_service(mock_db)
         self_transfer_cat = _make_category(
-            user_id=None, name="Self Transfer", slug="self-transfer", kind="transfer", is_default=True
+            user_id=None,
+            name="Self Transfer",
+            slug="self-transfer",
+            kind="transfer",
+            is_default=True,
         )
 
-        with patch.object(svc._repo, "get_default_category_by_slug", new=AsyncMock(return_value=self_transfer_cat)):
+        with patch.object(
+            svc._repo,
+            "get_default_category_by_slug",
+            new=AsyncMock(return_value=self_transfer_cat),
+        ):
             result = await svc.suggest_category(
                 description="Transfer to savings",
                 user_id=USER_ID,
@@ -342,9 +408,14 @@ class TestSuggestCategory:
         rule = _make_rule(pattern="ZOMATO", match_type="contains", category_id=cat_id)
         cat = _make_category(category_id=cat_id, name="Food & Dining", kind="expense")
 
-        with patch.object(svc._repo, "find_matching_rule", new=AsyncMock(return_value=rule)), \
-             patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)):
-
+        with (
+            patch.object(
+                svc._repo, "find_matching_rule", new=AsyncMock(return_value=rule)
+            ),
+            patch.object(
+                svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)
+            ),
+        ):
             result = await svc.suggest_category(
                 description="ZOMATO ORDER",
                 user_id=USER_ID,
@@ -363,9 +434,14 @@ class TestSuggestCategory:
         rule = _make_rule(pattern="zomato", match_type="contains", category_id=cat_id)
         cat = _make_category(category_id=cat_id, name="Food & Dining")
 
-        with patch.object(svc._repo, "find_matching_rule", new=AsyncMock(return_value=rule)), \
-             patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)):
-
+        with (
+            patch.object(
+                svc._repo, "find_matching_rule", new=AsyncMock(return_value=rule)
+            ),
+            patch.object(
+                svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)
+            ),
+        ):
             result = await svc.suggest_category(
                 description="Payment to ZOMATO",
                 user_id=USER_ID,
@@ -379,12 +455,19 @@ class TestSuggestCategory:
         """'starts_with' match_type correctly matches when description starts with pattern."""
         svc = _make_service(mock_db)
         cat_id = uuid.uuid4()
-        rule = _make_rule(pattern="amazon", match_type="starts_with", category_id=cat_id)
+        rule = _make_rule(
+            pattern="amazon", match_type="starts_with", category_id=cat_id
+        )
         cat = _make_category(category_id=cat_id, name="Shopping")
 
-        with patch.object(svc._repo, "find_matching_rule", new=AsyncMock(return_value=rule)), \
-             patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)):
-
+        with (
+            patch.object(
+                svc._repo, "find_matching_rule", new=AsyncMock(return_value=rule)
+            ),
+            patch.object(
+                svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)
+            ),
+        ):
             result = await svc.suggest_category(
                 description="Amazon purchase",
                 user_id=USER_ID,
@@ -398,12 +481,19 @@ class TestSuggestCategory:
         """'exact' match_type correctly matches only the exact description."""
         svc = _make_service(mock_db)
         cat_id = uuid.uuid4()
-        rule = _make_rule(pattern="netflix subscription", match_type="exact", category_id=cat_id)
+        rule = _make_rule(
+            pattern="netflix subscription", match_type="exact", category_id=cat_id
+        )
         cat = _make_category(category_id=cat_id, name="Subscriptions")
 
-        with patch.object(svc._repo, "find_matching_rule", new=AsyncMock(return_value=rule)), \
-             patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)):
-
+        with (
+            patch.object(
+                svc._repo, "find_matching_rule", new=AsyncMock(return_value=rule)
+            ),
+            patch.object(
+                svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)
+            ),
+        ):
             result = await svc.suggest_category(
                 description="Netflix Subscription",
                 user_id=USER_ID,
@@ -417,12 +507,19 @@ class TestSuggestCategory:
         """'regex' match_type correctly matches via re.search with IGNORECASE."""
         svc = _make_service(mock_db)
         cat_id = uuid.uuid4()
-        rule = _make_rule(pattern=r"zomato|swiggy", match_type="regex", category_id=cat_id)
+        rule = _make_rule(
+            pattern=r"zomato|swiggy", match_type="regex", category_id=cat_id
+        )
         cat = _make_category(category_id=cat_id, name="Food & Dining")
 
-        with patch.object(svc._repo, "find_matching_rule", new=AsyncMock(return_value=rule)), \
-             patch.object(svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)):
-
+        with (
+            patch.object(
+                svc._repo, "find_matching_rule", new=AsyncMock(return_value=rule)
+            ),
+            patch.object(
+                svc._repo, "get_category_by_id", new=AsyncMock(return_value=cat)
+            ),
+        ):
             result = await svc.suggest_category(
                 description="SWIGGY ORDER 12345",
                 user_id=USER_ID,
@@ -436,7 +533,9 @@ class TestSuggestCategory:
         """When no rule matches, returns CategorySuggestion with source='none' if adk_client is None."""
         svc = _make_service(mock_db)
 
-        with patch.object(svc._repo, "find_matching_rule", new=AsyncMock(return_value=None)):
+        with patch.object(
+            svc._repo, "find_matching_rule", new=AsyncMock(return_value=None)
+        ):
             result = await svc.suggest_category(
                 description="Unknown transaction XYZ",
                 user_id=USER_ID,

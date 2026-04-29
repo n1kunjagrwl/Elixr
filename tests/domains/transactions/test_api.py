@@ -5,6 +5,7 @@ Uses httpx.AsyncClient against a minimal FastAPI app with:
 - The TransactionsService dependency overridden per test via dependency_overrides
 - Auth middleware present; authenticated endpoints require a valid Bearer token
 """
+
 from __future__ import annotations
 
 import uuid
@@ -13,11 +14,17 @@ from unittest.mock import AsyncMock
 
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import SESSION_ID, USER_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    SESSION_ID,
+    USER_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 from elixir.platform.security import create_access_token
 
 
 # ── App builder ────────────────────────────────────────────────────────────────
+
 
 def _build_transactions_app(mock_service, settings=None):
     """
@@ -54,7 +61,9 @@ def _build_transactions_app(mock_service, settings=None):
     app.add_middleware(AuthMiddleware)
     app.include_router(transactions_api.router, prefix="/transactions")
 
-    get_transactions_service = getattr(transactions_api, "get_transactions_service", None)
+    get_transactions_service = getattr(
+        transactions_api, "get_transactions_service", None
+    )
     if get_transactions_service is not None:
         app.dependency_overrides[get_transactions_service] = lambda: mock_service
 
@@ -74,15 +83,22 @@ def _build_transactions_app(mock_service, settings=None):
             entry = dict(err)
             if "ctx" in entry:
                 ctx = dict(entry["ctx"])
-                entry["ctx"] = {k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()}
+                entry["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()
+                }
             safe.append(entry)
         return safe
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     return app
@@ -93,8 +109,10 @@ def _make_auth_header(settings=None) -> dict[str, str]:
     if settings is None:
         settings = make_test_settings()
     token, _ = create_access_token(
-        str(USER_ID), str(SESSION_ID),
-        settings.jwt_secret, settings.access_token_expiry_minutes,
+        str(USER_ID),
+        str(SESSION_ID),
+        settings.jwt_secret,
+        settings.access_token_expiry_minutes,
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -190,6 +208,7 @@ def _make_list_response(items: list[dict], **overrides) -> dict:
 
 # ── GET /transactions ──────────────────────────────────────────────────────────
 
+
 class TestGetTransactions:
     async def test_get_transactions_returns_200_with_paginated_results(self):
         """Authenticated GET /transactions → 200 with paginated transaction summaries."""
@@ -212,8 +231,12 @@ class TestGetTransactions:
         svc = _make_mock_service(list_transactions=AsyncMock(return_value=response_obj))
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.get("/transactions", headers=_make_auth_header(settings))
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                "/transactions", headers=_make_auth_header(settings)
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -240,7 +263,9 @@ class TestGetTransactions:
         account_id = str(uuid.uuid4())
         category_id = str(uuid.uuid4())
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/transactions",
                 params={
@@ -265,13 +290,16 @@ class TestGetTransactions:
         svc = _make_mock_service()
         app = _build_transactions_app(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/transactions")
 
         assert resp.status_code == 401
 
 
 # ── GET /transactions/{transaction_id} ────────────────────────────────────────
+
 
 class TestGetTransaction:
     async def test_get_transaction_returns_200_with_items(self):
@@ -282,7 +310,9 @@ class TestGetTransaction:
         svc = _make_mock_service(get_transaction=AsyncMock(return_value=response_obj))
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/transactions/{transaction_id}",
                 headers=_make_auth_header(settings),
@@ -304,7 +334,9 @@ class TestGetTransaction:
         )
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/transactions/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -316,6 +348,7 @@ class TestGetTransaction:
 
 # ── POST /transactions ─────────────────────────────────────────────────────────
 
+
 class TestPostTransaction:
     async def test_post_transaction_returns_201_with_manual_transaction(self):
         """Valid manual transaction body → 201 with created transaction."""
@@ -325,7 +358,9 @@ class TestPostTransaction:
         app = _build_transactions_app(svc, settings)
         category_id = str(uuid.uuid4())
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/transactions",
                 json={
@@ -355,7 +390,9 @@ class TestPostTransaction:
         svc = _make_mock_service()
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/transactions",
                 json={
@@ -379,7 +416,9 @@ class TestPostTransaction:
         svc = _make_mock_service()
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/transactions",
                 json={
@@ -391,7 +430,11 @@ class TestPostTransaction:
                     "type": "debit",
                     "raw_description": "Cash adjustment",
                     "items": [
-                        {"category_id": str(uuid.uuid4()), "amount": "0.00", "label": None}
+                        {
+                            "category_id": str(uuid.uuid4()),
+                            "amount": "0.00",
+                            "label": None,
+                        }
                     ],
                 },
                 headers=_make_auth_header(settings),
@@ -405,7 +448,9 @@ class TestPostTransaction:
         svc = _make_mock_service()
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/transactions",
                 json={
@@ -417,7 +462,11 @@ class TestPostTransaction:
                     "type": "expense",
                     "raw_description": "Swiggy order",
                     "items": [
-                        {"category_id": str(uuid.uuid4()), "amount": "1500.00", "label": None}
+                        {
+                            "category_id": str(uuid.uuid4()),
+                            "amount": "1500.00",
+                            "label": None,
+                        }
                     ],
                 },
                 headers=_make_auth_header(settings),
@@ -432,12 +481,16 @@ class TestPostTransaction:
         settings = make_test_settings()
         svc = _make_mock_service(
             add_transaction=AsyncMock(
-                side_effect=ItemAmountMismatchError("Item amounts must sum to transaction amount")
+                side_effect=ItemAmountMismatchError(
+                    "Item amounts must sum to transaction amount"
+                )
             )
         )
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/transactions",
                 json={
@@ -449,8 +502,16 @@ class TestPostTransaction:
                     "type": "debit",
                     "raw_description": "Amazon order",
                     "items": [
-                        {"category_id": str(uuid.uuid4()), "amount": "1000.00", "label": "Headphones"},
-                        {"category_id": str(uuid.uuid4()), "amount": "200.00", "label": "Olive oil"},
+                        {
+                            "category_id": str(uuid.uuid4()),
+                            "amount": "1000.00",
+                            "label": "Headphones",
+                        },
+                        {
+                            "category_id": str(uuid.uuid4()),
+                            "amount": "200.00",
+                            "label": "Olive oil",
+                        },
                     ],
                 },
                 headers=_make_auth_header(settings),
@@ -461,6 +522,7 @@ class TestPostTransaction:
 
 
 # ── PATCH /transactions/{transaction_id} ──────────────────────────────────────
+
 
 class TestPatchTransaction:
     async def test_patch_transaction_returns_200_with_updated_transaction(self):
@@ -483,14 +545,20 @@ class TestPatchTransaction:
         svc = _make_mock_service(edit_transaction=AsyncMock(return_value=response_obj))
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/transactions/{transaction_id}",
                 json={
                     "notes": "Updated note",
                     "type": "transfer",
                     "items": [
-                        {"category_id": str(uuid.uuid4()), "amount": "1500.00", "label": None}
+                        {
+                            "category_id": str(uuid.uuid4()),
+                            "amount": "1500.00",
+                            "label": None,
+                        }
                     ],
                 },
                 headers=_make_auth_header(settings),
@@ -507,11 +575,15 @@ class TestPatchTransaction:
 
         settings = make_test_settings()
         svc = _make_mock_service(
-            edit_transaction=AsyncMock(side_effect=TransactionNotFoundError("Not found"))
+            edit_transaction=AsyncMock(
+                side_effect=TransactionNotFoundError("Not found")
+            )
         )
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/transactions/{uuid.uuid4()}",
                 json={"notes": "Updated note"},
@@ -527,7 +599,9 @@ class TestPatchTransaction:
         svc = _make_mock_service()
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/transactions/{uuid.uuid4()}",
                 json={"type": "expense"},
@@ -543,18 +617,30 @@ class TestPatchTransaction:
         settings = make_test_settings()
         svc = _make_mock_service(
             edit_transaction=AsyncMock(
-                side_effect=ItemAmountMismatchError("Item amounts must sum to transaction amount")
+                side_effect=ItemAmountMismatchError(
+                    "Item amounts must sum to transaction amount"
+                )
             )
         )
         app = _build_transactions_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/transactions/{uuid.uuid4()}",
                 json={
                     "items": [
-                        {"category_id": str(uuid.uuid4()), "amount": "1000.00", "label": "Headphones"},
-                        {"category_id": str(uuid.uuid4()), "amount": "200.00", "label": "Olive oil"},
+                        {
+                            "category_id": str(uuid.uuid4()),
+                            "amount": "1000.00",
+                            "label": "Headphones",
+                        },
+                        {
+                            "category_id": str(uuid.uuid4()),
+                            "amount": "200.00",
+                            "label": "Olive oil",
+                        },
                     ]
                 },
                 headers=_make_auth_header(settings),

@@ -60,9 +60,7 @@ class PeersService:
         await self._db.commit()
         return PeerContactResponse.model_validate(contact)
 
-    async def delete_contact(
-        self, user_id: uuid.UUID, contact_id: uuid.UUID
-    ) -> None:
+    async def delete_contact(self, user_id: uuid.UUID, contact_id: uuid.UUID) -> None:
         contact = await self._repo.get_contact(user_id, contact_id)
         if contact is None:
             raise PeerContactNotFoundError(f"Peer contact {contact_id} not found.")

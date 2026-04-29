@@ -23,7 +23,7 @@ def upgrade() -> None:
     op.create_table(
         "peer_contacts",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("phone", sa.String(20), nullable=True),
         sa.Column("notes", sa.String(1000), nullable=True),
@@ -41,13 +41,12 @@ def upgrade() -> None:
     op.create_table(
         "peer_balances",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column(
             "peer_id",
             postgresql.UUID(as_uuid=True),
             sa.ForeignKey("peer_contacts.id", ondelete="RESTRICT"),
             nullable=False,
-            index=True,
         ),
         sa.Column("description", sa.String(500), nullable=False),
         sa.Column("original_amount", sa.Numeric(15, 2), nullable=False),
@@ -96,7 +95,6 @@ def upgrade() -> None:
             postgresql.UUID(as_uuid=True),
             sa.ForeignKey("peer_balances.id", ondelete="RESTRICT"),
             nullable=False,
-            index=True,
         ),
         sa.Column("amount", sa.Numeric(15, 2), nullable=False),
         sa.Column("currency", sa.String(3), nullable=False, server_default="INR"),

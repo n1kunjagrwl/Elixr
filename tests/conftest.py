@@ -7,6 +7,7 @@ Strategy:
 - API tests: build a real FastAPI app with a mocked session_factory,
   mocked Twilio, and mocked Temporal client. Uses httpx.AsyncClient.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -25,6 +26,7 @@ from elixir.shared.security import hash_otp
 
 
 # ── Test Settings ─────────────────────────────────────────────────────────────
+
 
 def make_test_settings(**overrides) -> Settings:
     """Return a Settings instance with safe, fast test values."""
@@ -57,6 +59,7 @@ def test_settings() -> Settings:
 
 # ── Mock External Clients ──────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def mock_twilio() -> AsyncMock:
     """Mock Twilio client — records calls, never sends SMS."""
@@ -74,6 +77,7 @@ def mock_temporal() -> AsyncMock:
 
 
 # ── Mock DB Session ───────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mock_db() -> AsyncMock:
@@ -127,12 +131,14 @@ def sample_session(sample_user, test_settings):
     """A mock Session ORM object with valid JTIs."""
     now = datetime.now(timezone.utc)
     _, access_jti = create_access_token(
-        str(sample_user.id), str(SESSION_ID),
+        str(sample_user.id),
+        str(SESSION_ID),
         test_settings.jwt_secret,
         test_settings.access_token_expiry_minutes,
     )
     refresh_token, refresh_jti = create_refresh_token(
-        str(sample_user.id), str(SESSION_ID),
+        str(sample_user.id),
+        str(SESSION_ID),
         test_settings.jwt_secret,
         test_settings.refresh_token_expiry_days,
     )
@@ -149,6 +155,7 @@ def sample_session(sample_user, test_settings):
 
 
 # ── Auth / Session Helpers ────────────────────────────────────────────────────
+
 
 def make_get_request_context_override(mock_db: AsyncMock | None = None):
     """
@@ -169,6 +176,7 @@ def make_get_request_context_override(mock_db: AsyncMock | None = None):
                 headers={"WWW-Authenticate": "Bearer"},
             )
         from unittest.mock import AsyncMock as _AM
+
         db = mock_db if mock_db is not None else _AM()
         return RequestContext(
             user_id=user_id,
@@ -181,6 +189,7 @@ def make_get_request_context_override(mock_db: AsyncMock | None = None):
 
 
 # ── FastAPI Test App ──────────────────────────────────────────────────────────
+
 
 def _make_mock_session_factory(mock_db: AsyncMock):
     """
@@ -202,12 +211,13 @@ def app_factory(mock_twilio, mock_temporal):
     Returns a callable(mock_db, settings) -> FastAPI app with all external
     deps replaced by mocks. Suitable for API tests.
     """
+
     def _build(mock_db: AsyncMock, settings: Settings | None = None):
         if settings is None:
             settings = make_test_settings()
 
         # Import only the identity router to keep app slim for tests
-        from fastapi import FastAPI, Request
+        from fastapi import FastAPI
         from fastapi.responses import JSONResponse
         from elixir.domains.identity.api import router as identity_router
         from elixir.shared.exceptions import ElixirError
@@ -236,8 +246,11 @@ def app_factory(mock_twilio, mock_temporal):
             )
 
         from fastapi.exceptions import RequestValidationError
+
         @app.exception_handler(RequestValidationError)
-        async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        async def validation_handler(
+            request: Request, exc: RequestValidationError
+        ) -> JSONResponse:
             return JSONResponse(
                 status_code=422,
                 content={"error": "VALIDATION_ERROR", "detail": exc.errors()},
@@ -252,5 +265,7 @@ def app_factory(mock_twilio, mock_temporal):
 async def async_client(app_factory, mock_db):
     """Ready-to-use httpx AsyncClient connected to the test app."""
     app = app_factory(mock_db)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         yield client

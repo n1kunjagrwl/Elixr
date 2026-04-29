@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 import httpx
 
@@ -17,9 +16,7 @@ class ExchangeRateClient:
 
     async def get_rates(self, base_currency: str = "INR") -> dict[str, float]:
         """Returns all rates with base_currency as 1.0."""
-        resp = await self._client.get(
-            f"{_BASE}/{self._api_key}/latest/{base_currency}"
-        )
+        resp = await self._client.get(f"{_BASE}/{self._api_key}/latest/{base_currency}")
         resp.raise_for_status()
         return resp.json()["conversion_rates"]
 

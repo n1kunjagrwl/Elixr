@@ -20,6 +20,7 @@ router = APIRouter()
 
 # ── Service factory ───────────────────────────────────────────────────────────
 
+
 def get_accounts_service(
     request: Request,
     db=Depends(get_db_session),
@@ -35,13 +36,16 @@ AccountsSvc = Annotated[AccountsService, Depends(get_accounts_service)]
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+
 @router.get("", response_model=list[AccountSummaryResponse])
 async def get_accounts(ctx: RequestCtx, svc: AccountsSvc):
     """List all active accounts for the authenticated user."""
     return await svc.list_accounts(ctx.user_id)
 
 
-@router.post("/bank", response_model=BankAccountResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/bank", response_model=BankAccountResponse, status_code=status.HTTP_201_CREATED
+)
 async def add_bank_account(
     body: BankAccountCreate,
     ctx: RequestCtx,
@@ -52,7 +56,9 @@ async def add_bank_account(
 
 
 @router.post(
-    "/credit-cards", response_model=CreditCardResponse, status_code=status.HTTP_201_CREATED
+    "/credit-cards",
+    response_model=CreditCardResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 async def add_credit_card(
     body: CreditCardCreate,

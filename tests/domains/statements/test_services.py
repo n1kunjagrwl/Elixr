@@ -4,6 +4,7 @@ Service-layer tests for the statements domain.
 All external dependencies (DB session, repository, storage, Temporal) are mocked.
 No real database, network, or file system access.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -18,8 +19,10 @@ from tests.conftest import USER_ID, make_test_settings
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_service(mock_db):
     from elixir.domains.statements.services import StatementsService
+
     return StatementsService(db=mock_db, settings=make_test_settings())
 
 
@@ -80,6 +83,7 @@ def _make_row(row_id=None, job_id=None, classification_status="pending"):
 
 # ── upload_statement tests ─────────────────────────────────────────────────────
 
+
 class TestUploadStatement:
     async def test_upload_statement_creates_upload_and_job_rows(self, mock_db):
         """Happy path: uploading a PDF creates upload + job rows and returns job_id + stream_url."""
@@ -92,10 +96,15 @@ class TestUploadStatement:
         mock_temporal = AsyncMock()
         mock_temporal.start_workflow = AsyncMock(return_value=MagicMock(id="wf-123"))
 
-        with patch.object(svc._repo, "create_upload", new=AsyncMock(return_value=upload)), \
-             patch.object(svc._repo, "create_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "add_outbox_event", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(
+                svc._repo, "create_upload", new=AsyncMock(return_value=upload)
+            ),
+            patch.object(svc._repo, "create_job", new=AsyncMock(return_value=job)),
+            patch.object(
+                svc._repo, "add_outbox_event", new=AsyncMock(return_value=None)
+            ),
+        ):
             result = await svc.upload_statement(
                 user_id=USER_ID,
                 account_id=ACCOUNT_ID,
@@ -165,11 +174,17 @@ class TestUploadStatement:
         mock_temporal = AsyncMock()
         mock_temporal.start_workflow = AsyncMock(return_value=MagicMock(id="wf-123"))
 
-        with patch.object(svc._repo, "create_upload", new=AsyncMock(return_value=upload)), \
-             patch.object(svc._repo, "create_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "add_outbox_event",
-                         new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p)))):
-
+        with (
+            patch.object(
+                svc._repo, "create_upload", new=AsyncMock(return_value=upload)
+            ),
+            patch.object(svc._repo, "create_job", new=AsyncMock(return_value=job)),
+            patch.object(
+                svc._repo,
+                "add_outbox_event",
+                new=AsyncMock(side_effect=lambda et, p: outbox_events.append((et, p))),
+            ),
+        ):
             await svc.upload_statement(
                 user_id=USER_ID,
                 account_id=ACCOUNT_ID,
@@ -191,6 +206,7 @@ class TestUploadStatement:
 
 # ── get_upload_status tests ────────────────────────────────────────────────────
 
+
 class TestGetUploadStatus:
     async def test_get_upload_status_returns_upload_and_job(self, mock_db):
         """Happy path: returns UploadStatusResponse with upload and job data."""
@@ -199,9 +215,12 @@ class TestGetUploadStatus:
         upload = _make_upload()
         job = _make_job()
 
-        with patch.object(svc._repo, "get_upload", new=AsyncMock(return_value=upload)), \
-             patch.object(svc._repo, "get_job_for_upload", new=AsyncMock(return_value=job)):
-
+        with (
+            patch.object(svc._repo, "get_upload", new=AsyncMock(return_value=upload)),
+            patch.object(
+                svc._repo, "get_job_for_upload", new=AsyncMock(return_value=job)
+            ),
+        ):
             result = await svc.get_upload_status(USER_ID, UPLOAD_ID)
 
         assert result.id == upload.id
@@ -222,6 +241,7 @@ class TestGetUploadStatus:
 
 # ── list_uploads tests ─────────────────────────────────────────────────────────
 
+
 class TestListUploads:
     async def test_list_uploads_returns_user_uploads(self, mock_db):
         """list_uploads returns all uploads belonging to the requesting user."""
@@ -229,7 +249,9 @@ class TestListUploads:
 
         uploads = [_make_upload(), _make_upload(upload_id=uuid.uuid4())]
 
-        with patch.object(svc._repo, "list_uploads", new=AsyncMock(return_value=uploads)):
+        with patch.object(
+            svc._repo, "list_uploads", new=AsyncMock(return_value=uploads)
+        ):
             results = await svc.list_uploads(USER_ID)
 
         assert len(results) == 2
@@ -238,6 +260,7 @@ class TestListUploads:
 
 
 # ── classify_row tests ─────────────────────────────────────────────────────────
+
 
 class TestClassifyRow:
     async def test_classify_row_updates_classification_status(self, mock_db):
@@ -253,11 +276,12 @@ class TestClassifyRow:
         data = ClassifyRowRequest(category_id=uuid.uuid4())
 
         mock_update = AsyncMock(return_value=None)
-        with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "get_row", new=AsyncMock(return_value=row)), \
-             patch.object(svc._repo, "update_row_classification", new=mock_update), \
-             patch.object(svc._repo, "add_row_items", new=AsyncMock(return_value=None)):
-
+        with (
+            patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)),
+            patch.object(svc._repo, "get_row", new=AsyncMock(return_value=row)),
+            patch.object(svc._repo, "update_row_classification", new=mock_update),
+            patch.object(svc._repo, "add_row_items", new=AsyncMock(return_value=None)),
+        ):
             await svc.classify_row(
                 user_id=USER_ID,
                 job_id=JOB_ID,
@@ -279,6 +303,7 @@ class TestClassifyRow:
         with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=None)):
             with pytest.raises(ExtractionJobNotFoundError):
                 from elixir.domains.statements.schemas import ClassifyRowRequest
+
                 await svc.classify_row(
                     user_id=USER_ID,
                     job_id=JOB_ID,
@@ -301,9 +326,10 @@ class TestClassifyRow:
 
         data = ClassifyRowRequest(category_id=uuid.uuid4())
 
-        with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "get_row", new=AsyncMock(return_value=row)):
-
+        with (
+            patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)),
+            patch.object(svc._repo, "get_row", new=AsyncMock(return_value=row)),
+        ):
             with pytest.raises(RowAlreadyClassifiedError):
                 await svc.classify_row(
                     user_id=USER_ID,
@@ -334,11 +360,14 @@ class TestClassifyRow:
         )
 
         mock_add_items = AsyncMock(return_value=None)
-        with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "get_row", new=AsyncMock(return_value=row)), \
-             patch.object(svc._repo, "update_row_classification", new=AsyncMock(return_value=None)), \
-             patch.object(svc._repo, "add_row_items", new=mock_add_items):
-
+        with (
+            patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)),
+            patch.object(svc._repo, "get_row", new=AsyncMock(return_value=row)),
+            patch.object(
+                svc._repo, "update_row_classification", new=AsyncMock(return_value=None)
+            ),
+            patch.object(svc._repo, "add_row_items", new=mock_add_items),
+        ):
             await svc.classify_row(
                 user_id=USER_ID,
                 job_id=JOB_ID,
@@ -371,9 +400,10 @@ class TestClassifyRow:
             ],
         )
 
-        with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "get_row", new=AsyncMock(return_value=row)):
-
+        with (
+            patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)),
+            patch.object(svc._repo, "get_row", new=AsyncMock(return_value=row)),
+        ):
             with pytest.raises(ItemAmountMismatchError):
                 await svc.classify_row(
                     user_id=USER_ID,
@@ -386,6 +416,7 @@ class TestClassifyRow:
 
 # ── get_rows_for_resume tests ──────────────────────────────────────────────────
 
+
 class TestGetRowsForResume:
     async def test_get_rows_for_resume_returns_rows(self, mock_db):
         """get_rows_for_resume returns all raw extracted rows for a job."""
@@ -394,15 +425,17 @@ class TestGetRowsForResume:
         job = _make_job()
         rows = [_make_row(), _make_row(row_id=uuid.uuid4())]
 
-        with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "list_rows", new=AsyncMock(return_value=rows)):
-
+        with (
+            patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)),
+            patch.object(svc._repo, "list_rows", new=AsyncMock(return_value=rows)),
+        ):
             result = await svc.get_rows_for_resume(USER_ID, JOB_ID)
 
         assert len(result) == 2
 
 
 # ── get_job_resume tests ───────────────────────────────────────────────────────
+
 
 class TestGetJobResume:
     async def test_get_job_resume_returns_job_and_rows(self, mock_db):
@@ -412,11 +445,15 @@ class TestGetJobResume:
         job = _make_job(status="awaiting_input")
         job.total_rows = 3
         job.classified_rows = 1
-        rows = [_make_row(), _make_row(row_id=uuid.uuid4(), classification_status="user_classified")]
+        rows = [
+            _make_row(),
+            _make_row(row_id=uuid.uuid4(), classification_status="user_classified"),
+        ]
 
-        with patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)), \
-             patch.object(svc._repo, "list_rows", new=AsyncMock(return_value=rows)):
-
+        with (
+            patch.object(svc._repo, "get_job", new=AsyncMock(return_value=job)),
+            patch.object(svc._repo, "list_rows", new=AsyncMock(return_value=rows)),
+        ):
             result = await svc.get_job_resume(USER_ID, JOB_ID)
 
         assert result.job.id == job.id

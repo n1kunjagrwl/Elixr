@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 # ── Event dataclasses ─────────────────────────────────────────────────────────
 
+
 class CategoryCreated:
     event_type: ClassVar[str] = "categorization.CategoryCreated"
 
@@ -35,6 +36,7 @@ class CategoryCreated:
 
 
 # ── Event handlers (subscribed via bootstrap) ─────────────────────────────────
+
 
 async def handle_category_created(payload: EventPayload, session: AsyncSession) -> None:
     """Placeholder for downstream reactions to a new category being created."""

@@ -5,6 +5,7 @@ Uses httpx.AsyncClient against a minimal FastAPI app with:
 - The PeersService dependency overridden per test via dependency_overrides
 - Auth middleware present; authenticated endpoints require a valid Bearer token
 """
+
 from __future__ import annotations
 
 import uuid
@@ -12,14 +13,19 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import USER_ID, SESSION_ID, make_test_settings, make_get_request_context_override
+from tests.conftest import (
+    USER_ID,
+    SESSION_ID,
+    make_test_settings,
+    make_get_request_context_override,
+)
 from elixir.platform.security import create_access_token
 
 
 # ── App builder ────────────────────────────────────────────────────────────────
+
 
 def _build_peers_app(mock_service, settings=None):
     """
@@ -71,15 +77,22 @@ def _build_peers_app(mock_service, settings=None):
             entry = dict(err)
             if "ctx" in entry:
                 ctx = dict(entry["ctx"])
-                entry["ctx"] = {k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()}
+                entry["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v for k, v in ctx.items()
+                }
             safe.append(entry)
         return safe
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"error": "VALIDATION_ERROR", "detail": _serialisable(exc.errors())},
+            content={
+                "error": "VALIDATION_ERROR",
+                "detail": _serialisable(exc.errors()),
+            },
         )
 
     return app
@@ -90,8 +103,10 @@ def _make_auth_header(settings=None) -> dict[str, str]:
     if settings is None:
         settings = make_test_settings()
     token, _ = create_access_token(
-        str(USER_ID), str(SESSION_ID),
-        settings.jwt_secret, settings.access_token_expiry_minutes,
+        str(USER_ID),
+        str(SESSION_ID),
+        settings.jwt_secret,
+        settings.access_token_expiry_minutes,
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -106,6 +121,7 @@ def _make_mock_service(**overrides):
 
 def _make_contact_response(**overrides):
     from elixir.domains.peers.schemas import PeerContactResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         user_id=USER_ID,
@@ -121,6 +137,7 @@ def _make_contact_response(**overrides):
 
 def _make_balance_response(**overrides):
     from elixir.domains.peers.schemas import PeerBalanceResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         user_id=USER_ID,
@@ -143,6 +160,7 @@ def _make_balance_response(**overrides):
 
 def _make_settlement_response(**overrides):
     from elixir.domains.peers.schemas import PeerSettlementResponse
+
     defaults = dict(
         id=uuid.uuid4(),
         balance_id=uuid.uuid4(),
@@ -160,6 +178,7 @@ def _make_settlement_response(**overrides):
 
 # ── GET /peers/contacts ────────────────────────────────────────────────────────
 
+
 class TestGetContacts:
     async def test_get_contacts_returns_200(self):
         """Authenticated GET /peers/contacts → 200 with contact list."""
@@ -168,8 +187,12 @@ class TestGetContacts:
         svc = _make_mock_service(list_contacts=AsyncMock(return_value=contacts))
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.get("/peers/contacts", headers=_make_auth_header(settings))
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                "/peers/contacts", headers=_make_auth_header(settings)
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -181,13 +204,16 @@ class TestGetContacts:
         svc = _make_mock_service()
         app = _build_peers_app(svc)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get("/peers/contacts")
 
         assert resp.status_code == 401
 
 
 # ── POST /peers/contacts ───────────────────────────────────────────────────────
+
 
 class TestPostContact:
     async def test_post_contact_returns_201(self):
@@ -197,7 +223,9 @@ class TestPostContact:
         svc = _make_mock_service(add_contact=AsyncMock(return_value=response_obj))
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/peers/contacts",
                 json={"name": "Charlie"},
@@ -214,7 +242,9 @@ class TestPostContact:
         svc = _make_mock_service()
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/peers/contacts",
                 json={},  # no name
@@ -226,6 +256,7 @@ class TestPostContact:
 
 # ── PATCH /peers/contacts/{id} ─────────────────────────────────────────────────
 
+
 class TestPatchContact:
     async def test_patch_contact_returns_200(self):
         """Valid partial update → 200 with updated PeerContactResponse."""
@@ -235,7 +266,9 @@ class TestPatchContact:
         svc = _make_mock_service(edit_contact=AsyncMock(return_value=response_obj))
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/peers/contacts/{contact_id}",
                 json={"name": "Updated Name"},
@@ -256,7 +289,9 @@ class TestPatchContact:
         )
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/peers/contacts/{uuid.uuid4()}",
                 json={"name": "X"},
@@ -269,6 +304,7 @@ class TestPatchContact:
 
 # ── DELETE /peers/contacts/{id} ────────────────────────────────────────────────
 
+
 class TestDeleteContact:
     async def test_delete_contact_returns_204(self):
         """Successful contact deletion → 204 No Content."""
@@ -277,7 +313,9 @@ class TestDeleteContact:
         app = _build_peers_app(svc, settings)
         contact_id = uuid.uuid4()
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/peers/contacts/{contact_id}",
                 headers=_make_auth_header(settings),
@@ -291,11 +329,15 @@ class TestDeleteContact:
 
         settings = make_test_settings()
         svc = _make_mock_service(
-            delete_contact=AsyncMock(side_effect=ContactHasOpenBalancesError("Has open balances"))
+            delete_contact=AsyncMock(
+                side_effect=ContactHasOpenBalancesError("Has open balances")
+            )
         )
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.delete(
                 f"/peers/contacts/{uuid.uuid4()}",
                 headers=_make_auth_header(settings),
@@ -307,6 +349,7 @@ class TestDeleteContact:
 
 # ── GET /peers/balances ────────────────────────────────────────────────────────
 
+
 class TestGetBalances:
     async def test_get_balances_returns_200(self):
         """Authenticated GET /peers/balances → 200 with balance list."""
@@ -315,8 +358,12 @@ class TestGetBalances:
         svc = _make_mock_service(list_balances=AsyncMock(return_value=balances))
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.get("/peers/balances", headers=_make_auth_header(settings))
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                "/peers/balances", headers=_make_auth_header(settings)
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -330,7 +377,9 @@ class TestGetBalances:
         svc = _make_mock_service(list_balances=AsyncMock(return_value=balances))
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/peers/balances?status=open",
                 headers=_make_auth_header(settings),
@@ -342,6 +391,7 @@ class TestGetBalances:
 
 # ── POST /peers/balances ───────────────────────────────────────────────────────
 
+
 class TestPostBalance:
     async def test_post_balance_returns_201(self):
         """Valid balance body → 201 with PeerBalanceResponse."""
@@ -351,7 +401,9 @@ class TestPostBalance:
         svc = _make_mock_service(log_balance=AsyncMock(return_value=response_obj))
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/peers/balances",
                 json={
@@ -374,7 +426,9 @@ class TestPostBalance:
         app = _build_peers_app(svc, settings)
         peer_id = uuid.uuid4()
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/peers/balances",
                 json={
@@ -391,16 +445,21 @@ class TestPostBalance:
 
 # ── PATCH /peers/balances/{id} ─────────────────────────────────────────────────
 
+
 class TestPatchBalance:
     async def test_patch_balance_returns_200(self):
         """Valid partial update on balance → 200 with updated PeerBalanceResponse."""
         settings = make_test_settings()
         balance_id = uuid.uuid4()
-        response_obj = _make_balance_response(id=balance_id, description="Updated description")
+        response_obj = _make_balance_response(
+            id=balance_id, description="Updated description"
+        )
         svc = _make_mock_service(edit_balance=AsyncMock(return_value=response_obj))
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/peers/balances/{balance_id}",
                 json={"description": "Updated description"},
@@ -414,6 +473,7 @@ class TestPatchBalance:
 
 # ── GET /peers/balances/{id}/settlements ───────────────────────────────────────
 
+
 class TestGetSettlements:
     async def test_get_settlements_returns_200(self):
         """Authenticated GET /peers/balances/{id}/settlements → 200 with list."""
@@ -426,7 +486,9 @@ class TestGetSettlements:
         svc = _make_mock_service(list_settlements=AsyncMock(return_value=settlements))
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/peers/balances/{balance_id}/settlements",
                 headers=_make_auth_header(settings),
@@ -440,16 +502,21 @@ class TestGetSettlements:
 
 # ── POST /peers/balances/{id}/settlements ──────────────────────────────────────
 
+
 class TestPostSettlement:
     async def test_post_settlement_returns_201(self):
         """Valid settlement body → 201 with PeerSettlementResponse."""
         settings = make_test_settings()
         balance_id = uuid.uuid4()
-        response_obj = _make_settlement_response(balance_id=balance_id, amount=Decimal("100.00"))
+        response_obj = _make_settlement_response(
+            balance_id=balance_id, amount=Decimal("100.00")
+        )
         svc = _make_mock_service(record_settlement=AsyncMock(return_value=response_obj))
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/peers/balances/{balance_id}/settlements",
                 json={
@@ -477,7 +544,9 @@ class TestPostSettlement:
         )
         app = _build_peers_app(svc, settings)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/peers/balances/{balance_id}/settlements",
                 json={

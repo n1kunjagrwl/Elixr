@@ -49,6 +49,7 @@ class StatementsService:
     ) -> UploadStartResponse:
         if storage_client is None:
             from elixir.shared.exceptions import UnprocessableError
+
             raise UnprocessableError(
                 "File storage is not configured. Statement upload is currently unavailable."
             )
@@ -61,15 +62,11 @@ class StatementsService:
 
         # Validate file size
         if len(file_content) > _MAX_FILE_SIZE:
-            raise FileTooLargeError(
-                "File size exceeds the 20 MB limit."
-            )
+            raise FileTooLargeError("File size exceeds the 20 MB limit.")
 
         # Save file to storage
         filename = f"{uuid.uuid4()}.{file_type}"
-        file_path = await storage_client.save(
-            str(user_id), filename, file_content
-        )
+        file_path = await storage_client.save(str(user_id), filename, file_content)
 
         # Create upload row
         upload = await self._repo.create_upload(
@@ -98,6 +95,7 @@ class StatementsService:
             from elixir.domains.statements.workflows.statement_processing import (
                 StatementProcessingWorkflow,
             )
+
             wf_handle = await temporal_client.start_workflow(
                 StatementProcessingWorkflow.run,
                 args=[str(job.id), str(upload.id)],
@@ -169,7 +167,9 @@ class StatementsService:
         # Validate item amounts if provided
         if data.items:
             item_total = sum(item.amount for item in data.items)
-            row_amount = row.debit_amount if row.debit_amount is not None else row.credit_amount
+            row_amount = (
+                row.debit_amount if row.debit_amount is not None else row.credit_amount
+            )
             if row_amount is None or item_total != row_amount:
                 raise ItemAmountMismatchError(
                     f"Item amounts sum to {item_total} but row amount is {row_amount}."
@@ -186,7 +186,9 @@ class StatementsService:
         if data.items:
             await self._repo.add_row_items(
                 row_id=row_id,
-                items=[{"label": item.label, "amount": item.amount} for item in data.items],
+                items=[
+                    {"label": item.label, "amount": item.amount} for item in data.items
+                ],
             )
 
         # Signal Temporal workflow
