@@ -30,7 +30,7 @@ module.exports = {
     {
       name: "elixir",
       script: "docker",
-      args: "compose up --build",
+      args: "compose up",
 
       // docker compose up blocks the terminal; PM2 keeps it supervised.
       autorestart: true,
