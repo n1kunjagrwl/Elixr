@@ -12,6 +12,11 @@ const TransactionsPage = lazy(() => import('@/pages/transactions/TransactionsPag
 const InvestmentsPage = lazy(() => import('@/pages/investments/InvestmentsPage'))
 const PeersPage = lazy(() => import('@/pages/peers/PeersPage'))
 const MorePage = lazy(() => import('@/pages/more/MorePage'))
+const BudgetsPage = lazy(() => import('@/pages/more/BudgetsPage'))
+const EarningsPage = lazy(() => import('@/pages/more/EarningsPage'))
+const AccountsPage = lazy(() => import('@/pages/more/AccountsPage'))
+const CategoriesPage = lazy(() => import('@/pages/more/CategoriesPage'))
+const SettingsPage = lazy(() => import('@/pages/more/SettingsPage'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,6 +97,26 @@ export function App() {
               <Route
                 path="/more"
                 element={<ErrorBoundary><Suspense fallback={<PageFallback />}><MorePage /></Suspense></ErrorBoundary>}
+              />
+              <Route
+                path="/more/budgets"
+                element={<ErrorBoundary><Suspense fallback={<PageFallback />}><BudgetsPage /></Suspense></ErrorBoundary>}
+              />
+              <Route
+                path="/more/earnings"
+                element={<ErrorBoundary><Suspense fallback={<PageFallback />}><EarningsPage /></Suspense></ErrorBoundary>}
+              />
+              <Route
+                path="/more/accounts"
+                element={<ErrorBoundary><Suspense fallback={<PageFallback />}><AccountsPage /></Suspense></ErrorBoundary>}
+              />
+              <Route
+                path="/more/categories"
+                element={<ErrorBoundary><Suspense fallback={<PageFallback />}><CategoriesPage /></Suspense></ErrorBoundary>}
+              />
+              <Route
+                path="/more/settings"
+                element={<ErrorBoundary><Suspense fallback={<PageFallback />}><SettingsPage /></Suspense></ErrorBoundary>}
               />
             </Route>
           </Route>
