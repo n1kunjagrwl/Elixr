@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PageShell } from '@/components/layout/PageShell'
 import { AuthGuard } from '@/components/layout/AuthGuard'
+import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { useAuthStore } from '@/store/auth'
 
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
@@ -60,9 +61,11 @@ export function App() {
           <Route
             path="/login"
             element={
-              <Suspense fallback={<PageFallback />}>
-                <LoginPage />
-              </Suspense>
+              <ErrorBoundary>
+                <Suspense fallback={<PageFallback />}>
+                  <LoginPage />
+                </Suspense>
+              </ErrorBoundary>
             }
           />
 
@@ -72,23 +75,23 @@ export function App() {
               <Route index element={<Navigate to="/home" replace />} />
               <Route
                 path="/home"
-                element={<Suspense fallback={<PageFallback />}><HomePage /></Suspense>}
+                element={<ErrorBoundary><Suspense fallback={<PageFallback />}><HomePage /></Suspense></ErrorBoundary>}
               />
               <Route
                 path="/transactions"
-                element={<Suspense fallback={<PageFallback />}><TransactionsPage /></Suspense>}
+                element={<ErrorBoundary><Suspense fallback={<PageFallback />}><TransactionsPage /></Suspense></ErrorBoundary>}
               />
               <Route
                 path="/investments"
-                element={<Suspense fallback={<PageFallback />}><InvestmentsPage /></Suspense>}
+                element={<ErrorBoundary><Suspense fallback={<PageFallback />}><InvestmentsPage /></Suspense></ErrorBoundary>}
               />
               <Route
                 path="/peers"
-                element={<Suspense fallback={<PageFallback />}><PeersPage /></Suspense>}
+                element={<ErrorBoundary><Suspense fallback={<PageFallback />}><PeersPage /></Suspense></ErrorBoundary>}
               />
               <Route
                 path="/more"
-                element={<Suspense fallback={<PageFallback />}><MorePage /></Suspense>}
+                element={<ErrorBoundary><Suspense fallback={<PageFallback />}><MorePage /></Suspense></ErrorBoundary>}
               />
             </Route>
           </Route>

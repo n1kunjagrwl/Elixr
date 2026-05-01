@@ -15,6 +15,18 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
+        // Always fetch HTML from network first so a new deploy is picked up
+        // immediately — avoids serving stale JS chunk URLs from cache.
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst' as const,
+            options: {
+              cacheName: 'pages-cache',
+              networkTimeoutSeconds: 3,
+            },
+          },
+        ],
       },
       includeAssets: ['icons/*.png'],
       manifest: {
@@ -38,6 +50,9 @@ export default defineConfig({
     },
   },
   server: {
+    // Bind to IPv6 wildcard (::). With macOS dual-stack (v6only=0) this also
+    // accepts IPv4 connections on 127.0.0.1, fixing Safari's localhost resolution.
+    host: '::',
     proxy: {
       '/api': 'http://localhost:8000',
     },

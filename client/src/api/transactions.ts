@@ -8,13 +8,15 @@ export interface TransactionFilters {
   category_id?: string
   type?: 'debit' | 'credit'
   unreviewed?: boolean
-  limit?: number
-  offset?: number
+  page?: number
+  page_size?: number
 }
 
+// Backend returns a paginated envelope; extract items so callers always get Transaction[].
+// Also handles the mock response (plain []) gracefully.
 export async function listTransactions(filters: TransactionFilters = {}): Promise<Transaction[]> {
-  const { data } = await api.get<Transaction[]>('/transactions', { params: filters })
-  return data
+  const { data } = await api.get<{ items: Transaction[] } | Transaction[]>('/transactions', { params: filters })
+  return Array.isArray(data) ? data : data.items
 }
 
 export async function getTransaction(id: string): Promise<Transaction> {

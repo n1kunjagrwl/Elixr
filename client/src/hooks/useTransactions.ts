@@ -25,7 +25,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
 export function useRecentTransactions(limit = 5) {
   return useQuery({
     queryKey: ['transactions', 'recent', limit],
-    queryFn: () => listTransactions({ limit }),
+    queryFn: () => listTransactions({ page_size: limit }),
     enabled: enabled(),
   })
 }
