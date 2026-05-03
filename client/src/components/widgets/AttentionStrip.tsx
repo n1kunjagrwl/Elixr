@@ -1,26 +1,40 @@
 import { AlertCircle, X } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-
-interface AttentionItem {
-  id: string
-  message: string
-  action?: string
-}
-
-const PLACEHOLDER_ITEMS: AttentionItem[] = [
-  { id: '1', message: '3 transactions need your review', action: 'Review' },
-  { id: '2', message: 'Food budget is 90% used this month' },
-]
+import { useUnreviewedCount } from '@/hooks/useTransactions'
+import { useNotifications } from '@/hooks/useNotifications'
 
 export function AttentionStrip() {
+  const navigate = useNavigate()
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
-  const visible = PLACEHOLDER_ITEMS.filter((i) => !dismissed.has(i.id))
+  const { data: unreviewedData } = useUnreviewedCount()
+  const { data: notifications } = useNotifications()
+
+  const items: Array<{ id: string; message: string; onAction?: () => void; actionLabel?: string }> = []
+
+  const unreviewedCount = unreviewedData?.count ?? 0
+  if (unreviewedCount > 0) {
+    items.push({
+      id: 'unreviewed',
+      message: `${unreviewedCount} transaction${unreviewedCount > 1 ? 's' : ''} need your review`,
+      onAction: () => navigate('/transactions?unreviewed=true'),
+      actionLabel: 'Review',
+    })
+  }
+
+  for (const n of notifications ?? []) {
+    if (!n.is_read) {
+      items.push({ id: `notif-${n.id}`, message: n.title })
+    }
+  }
+
+  const visible = items.filter((i) => !dismissed.has(i.id))
 
   if (visible.length === 0) return null
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-testid="attention-strip">
       {visible.map((item) => (
         <div
           key={item.id}
@@ -34,8 +48,13 @@ export function AttentionStrip() {
             <span className="text-sm text-amber-900 dark:text-amber-200 truncate">{item.message}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {item.action && (
-              <button className="text-xs font-semibold text-primary hover:underline">{item.action}</button>
+            {item.onAction && item.actionLabel && (
+              <button
+                onClick={item.onAction}
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                {item.actionLabel}
+              </button>
             )}
             <button
               onClick={() => setDismissed((s) => new Set([...s, item.id]))}

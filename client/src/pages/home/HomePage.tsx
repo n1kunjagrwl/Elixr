@@ -10,21 +10,47 @@ import { RecentTransactionsWidget } from '@/components/widgets/RecentTransaction
 import { InvestmentSnapshotWidget } from '@/components/widgets/InvestmentSnapshotWidget'
 import { PeerBalancesWidget } from '@/components/widgets/PeerBalancesWidget'
 import { useDashboardStore } from '@/store/dashboard'
+import { useUnreadCount } from '@/hooks/useNotifications'
+import { startOfMonth, endOfMonth } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { WidgetId } from '@/types'
 
 const PRESETS = ['This Month', 'Last Month', '3 Months', 'This Year'] as const
 type Preset = (typeof PRESETS)[number]
 
-function WidgetRenderer({ id }: { id: WidgetId }) {
+function presetDateRange(preset: Preset, now: Date): { from: Date; to: Date } {
+  switch (preset) {
+    case 'This Month':
+      return { from: startOfMonth(now), to: endOfMonth(now) }
+    case 'Last Month': {
+      const last = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      return { from: startOfMonth(last), to: endOfMonth(last) }
+    }
+    case '3 Months': {
+      const threeBack = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+      return { from: startOfMonth(threeBack), to: endOfMonth(now) }
+    }
+    case 'This Year':
+      return { from: new Date(now.getFullYear(), 0, 1), to: endOfMonth(now) }
+  }
+}
+
+function WidgetRenderer({ id, dateRange }: { id: WidgetId; dateRange: { from: Date; to: Date } }) {
   switch (id) {
-    case 'attention': return <AttentionStrip />
-    case 'net-position': return <NetPositionWidget />
-    case 'spending-breakdown': return <SpendingBreakdownWidget />
-    case 'budget-status': return <BudgetStatusWidget />
-    case 'recent-transactions': return <RecentTransactionsWidget />
-    case 'investment-snapshot': return <InvestmentSnapshotWidget />
-    case 'peer-balances': return <PeerBalancesWidget />
+    case 'attention':
+      return <AttentionStrip />
+    case 'net-position':
+      return <NetPositionWidget from={dateRange.from} to={dateRange.to} />
+    case 'spending-breakdown':
+      return <SpendingBreakdownWidget from={dateRange.from} to={dateRange.to} />
+    case 'budget-status':
+      return <BudgetStatusWidget />
+    case 'recent-transactions':
+      return <RecentTransactionsWidget />
+    case 'investment-snapshot':
+      return <InvestmentSnapshotWidget />
+    case 'peer-balances':
+      return <PeerBalancesWidget />
   }
 }
 
@@ -35,15 +61,20 @@ export default function HomePage() {
     .sort((a, b) => a.order - b.order)
 
   const now = new Date()
+  const dateRange = presetDateRange(preset, now)
+  const { data: unreadData } = useUnreadCount()
+  const hasUnread = (unreadData?.count ?? 0) > 0
 
   return (
     <div>
       <Header
         title={format(now, 'MMMM yyyy')}
         action={
-          <button className="relative p-1">
+          <button className="relative p-1" aria-label="Notifications">
             <Bell className="h-5 w-5 text-muted-foreground" />
-            <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-primary" />
+            {hasUnread && (
+              <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-primary" />
+            )}
           </button>
         }
       />
@@ -69,7 +100,7 @@ export default function HomePage() {
 
       <div className="space-y-3 px-4 pb-4">
         {widgets.map((w) => (
-          <WidgetRenderer key={w.id} id={w.id} />
+          <WidgetRenderer key={w.id} id={w.id} dateRange={dateRange} />
         ))}
       </div>
     </div>

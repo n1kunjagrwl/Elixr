@@ -125,6 +125,29 @@ uv run mypy src/               # Type check
 
 ---
 
+## Frontend Development Guidelines
+
+These rules apply to all work in `client/`. Full detail: `docs/frontend-development-guidelines.md` and `client/docs/development-guidelines.md`.
+
+**Build one screen at a time, end-to-end:**
+1. Design the screen layout (confirm against `client/docs/design.md`)
+2. Build the UI shell with placeholder data — acceptable only at this stage
+3. Stop and plan the API integration: which endpoints, exact request/response schemas, loading/empty/error states
+4. Wire the real API — replace all placeholder data with live TanStack Query hooks; zero mock data in component/page code after this
+5. Write Playwright E2E tests before calling the screen done
+6. Use Playwright screenshots to verify the screen looks correct at mobile / tablet / desktop widths
+7. Fix any gaps, then move to the next screen
+
+**Testing rules:**
+- Write tests before implementing a change, not after
+- Every API call the screen makes must be exercised by at least one test — assert the request shape and every meaningful response variant (data, empty, 4xx, network failure)
+- Tests live in `client/tests/{screen-name}/`
+- Mock data is allowed only in tests via `page.route()` — never in `src/pages/`, `src/components/`, `src/hooks/`, or `src/api/`
+
+**No mock data in production code.** If a backend endpoint doesn't exist yet, build the endpoint first (or agree on a contract and stub it only in tests).
+
+---
+
 ## Where to Look First
 
 | Question | File |
