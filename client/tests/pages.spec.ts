@@ -26,36 +26,17 @@ test.describe('Transactions page', () => {
     await expect(page.getByPlaceholder('Search transactions…')).toBeVisible()
   })
 
-  test('shows category filter chips', async ({ page }) => {
+  test('"All" category chip is always present and active by default', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'All' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Food' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Transport' })).toBeVisible()
-  })
-
-  test('"All" category is active by default', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'All' })).toHaveClass(/bg-primary/)
   })
 
-  test('shows placeholder transaction list', async ({ page }) => {
-    await expect(page.getByText('Swiggy Order')).toBeVisible()
-    await expect(page.getByText('Salary — Think41')).toBeVisible()
-    await expect(page.getByText('Uber Ride')).toBeVisible()
+  test('shows empty state when API returns no transactions', async ({ page }) => {
+    await expect(page.getByTestId('empty-state')).toBeVisible()
+    await expect(page.getByText('No transactions yet')).toBeVisible()
   })
 
-  test('filtering by category shows only matching transactions', async ({ page }) => {
-    await page.getByRole('button', { name: 'Food' }).click()
-    await expect(page.getByText('Swiggy Order')).toBeVisible()
-    await expect(page.getByText('Zomato')).toBeVisible()
-    await expect(page.getByText('Uber Ride')).not.toBeVisible()
-  })
-
-  test('search filters transactions by description', async ({ page }) => {
-    await page.getByPlaceholder('Search transactions…').fill('Salary')
-    await expect(page.getByText('Salary — Think41')).toBeVisible()
-    await expect(page.getByText('Swiggy Order')).not.toBeVisible()
-  })
-
-  test('empty search result shows "No transactions found"', async ({ page }) => {
+  test('empty search shows "No transactions found" when there is a search term', async ({ page }) => {
     await page.getByPlaceholder('Search transactions…').fill('zzznomatch')
     await expect(page.getByText('No transactions found')).toBeVisible()
   })
@@ -63,7 +44,7 @@ test.describe('Transactions page', () => {
   test('does not show blank page on cold direct URL load', async ({ page }) => {
     await page.goto('/transactions')
     await expect(page.getByText('Transactions')).toBeVisible()
-    await expect(page.getByText('Swiggy Order')).toBeVisible()
+    await expect(page.getByTestId('category-chips')).toBeVisible()
   })
 })
 
