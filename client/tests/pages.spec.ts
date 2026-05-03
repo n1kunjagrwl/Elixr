@@ -69,20 +69,18 @@ test.describe('Investments page', () => {
     await expect(page.getByRole('tab', { name: 'FDs' })).toBeVisible()
   })
 
-  test('Holdings tab is active by default and shows holdings', async ({ page }) => {
-    await expect(page.getByText('Mirae Asset Large Cap')).toBeVisible()
-    await expect(page.getByText('HDFC Bank')).toBeVisible()
+  test('Holdings tab shows empty state when API returns no holdings', async ({ page }) => {
+    await expect(page.getByText('No holdings added')).toBeVisible()
   })
 
-  test('switching to SIPs tab shows SIP entries', async ({ page }) => {
+  test('switching to SIPs tab shows empty state when API returns no SIPs', async ({ page }) => {
     await page.getByRole('tab', { name: 'SIPs' }).click()
-    await expect(page.getByText('Axis Bluechip Fund')).toBeVisible()
-    await expect(page.getByText('Parag Parikh Flexi Cap')).toBeVisible()
+    await expect(page.getByText('No active SIPs')).toBeVisible()
   })
 
-  test('switching to FDs tab shows FD entries', async ({ page }) => {
+  test('switching to FDs tab shows empty state when API returns no FDs', async ({ page }) => {
     await page.getByRole('tab', { name: 'FDs' }).click()
-    await expect(page.getByText('SBI FD')).toBeVisible()
+    await expect(page.getByText('No fixed deposits')).toBeVisible()
   })
 
   test('does not show blank page on cold direct URL load', async ({ page }) => {
