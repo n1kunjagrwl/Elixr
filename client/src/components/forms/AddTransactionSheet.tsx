@@ -45,16 +45,16 @@ export function AddTransactionSheet({ open, onOpenChange }: Props) {
     const account_kind = account.type === 'credit_card' ? 'credit_card' : 'bank_account'
 
     create.mutate(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       {
         account_id: accountId,
-        // @ts-expect-error backend shape differs from list response shape
         account_kind,
         type,
         amount: amountNum,
         date,
         raw_description: description || undefined,
         items: [{ category_id: categoryId, amount: amountNum }],
-      } as Parameters<typeof create.mutate>[0],
+      } as any,
       {
         onSuccess: () => {
           reset()
