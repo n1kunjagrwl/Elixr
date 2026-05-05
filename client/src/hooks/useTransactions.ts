@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   listTransactions,
+  createTransaction,
   updateTransaction,
   getNetPosition,
   getSpendingByCategory,
@@ -56,6 +57,14 @@ export function useUnreviewedCount() {
     queryFn: getUnreviewedCount,
     enabled: enabled(),
     refetchInterval: 30_000,
+  })
+}
+
+export function useCreateTransaction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: createTransaction,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['transactions'] }),
   })
 }
 

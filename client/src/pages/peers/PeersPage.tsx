@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { UserPlus } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardContent } from '@/components/ui/card'
+import { Sheet, SheetContent, SheetPortal, SheetOverlay } from '@/components/ui/sheet'
 import { formatCompactINR } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { usePeers, useRecordSettlement } from '@/hooks/usePeers'
+import { usePeers, useCreatePeer, useRecordSettlement } from '@/hooks/usePeers'
 
 function getInitials(name: string): string {
   return name
@@ -44,9 +46,82 @@ function PeerSkeleton() {
   )
 }
 
+function AddPeerSheet({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}) {
+  const createPeer = useCreatePeer()
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) return
+    createPeer.mutate(
+      { name: name.trim(), phone: phone.trim() || undefined },
+      {
+        onSuccess: () => {
+          setName('')
+          setPhone('')
+          onOpenChange(false)
+        },
+      }
+    )
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetPortal>
+        <SheetOverlay />
+        <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-8 pt-4">
+          <div className="mb-4 h-1 w-10 rounded-full bg-muted mx-auto" />
+          <h2 className="mb-4 text-base font-semibold">Add Peer</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                placeholder="e.g. Arjun Sharma"
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Phone (optional)
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. 9876543210"
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!name.trim() || createPeer.isPending}
+              className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {createPeer.isPending ? 'Saving…' : 'Add Peer'}
+            </button>
+          </form>
+        </SheetContent>
+      </SheetPortal>
+    </Sheet>
+  )
+}
+
 export default function PeersPage() {
   const { data: peers, isLoading } = usePeers()
   const settle = useRecordSettlement()
+  const [addOpen, setAddOpen] = useState(false)
 
   const totalOwedToYou = (peers ?? [])
     .filter((p) => p.net_balance_paise > 0)
@@ -61,7 +136,11 @@ export default function PeersPage() {
       <Header
         title="Peers"
         action={
-          <button className="flex items-center gap-1 text-sm text-primary font-medium" aria-label="Add peer">
+          <button
+            onClick={() => setAddOpen(true)}
+            className="flex items-center gap-1 text-sm text-primary font-medium"
+            aria-label="Add peer"
+          >
             <UserPlus className="h-4 w-4" /> Add
           </button>
         }
@@ -153,6 +232,8 @@ export default function PeersPage() {
           )}
         </div>
       </div>
+
+      <AddPeerSheet open={addOpen} onOpenChange={setAddOpen} />
     </div>
   )
 }

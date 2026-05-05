@@ -6,8 +6,22 @@ export async function listAccounts(): Promise<Account[]> {
   return data
 }
 
-export async function createBankAccount(payload: { label: string; bank_name: string; last4: string }): Promise<Account> {
+export async function createBankAccount(payload: {
+  nickname: string
+  bank_name: string
+  account_type: 'savings' | 'current' | 'salary' | 'nre' | 'nro'
+  last4?: string
+}): Promise<Account> {
   const { data } = await api.post<Account>('/accounts/bank', payload)
+  return data
+}
+
+export async function createCreditCard(payload: {
+  nickname: string
+  bank_name: string
+  last4?: string
+}): Promise<Account> {
+  const { data } = await api.post<Account>('/accounts/credit-cards', payload)
   return data
 }
 

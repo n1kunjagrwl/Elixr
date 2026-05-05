@@ -8,6 +8,27 @@ export interface PortfolioSummary {
   pnl_percent: number
 }
 
+export interface InstrumentCreate {
+  name: string
+  type: 'mutual_fund' | 'stock' | 'crypto' | 'gold' | 'fd' | 'other'
+  ticker?: string
+  currency?: string
+}
+
+export interface InstrumentResponse {
+  id: string
+  name: string
+  type: string
+}
+
+export interface HoldingCreate {
+  instrument_id: string
+  units?: number
+  avg_cost_per_unit?: number
+  total_invested?: number
+  current_value?: number
+}
+
 export async function listHoldings(): Promise<Holding[]> {
   const { data } = await api.get<Holding[]>('/investments/holdings')
   return data
@@ -18,7 +39,12 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
   return data
 }
 
-export async function createHolding(payload: Partial<Holding>): Promise<Holding> {
+export async function createInstrument(payload: InstrumentCreate): Promise<InstrumentResponse> {
+  const { data } = await api.post<InstrumentResponse>('/investments/instruments', payload)
+  return data
+}
+
+export async function createHolding(payload: HoldingCreate): Promise<Holding> {
   const { data } = await api.post<Holding>('/investments/holdings', payload)
   return data
 }
