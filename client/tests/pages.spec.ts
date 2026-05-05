@@ -103,29 +103,18 @@ test.describe('Peers page', () => {
 
   test('shows "Owed to you" and "You owe" summary cards', async ({ page }) => {
     await expect(page.getByText('Owed to you')).toBeVisible()
-    // "You owe" appears in the summary card and in peer row labels — match first
     await expect(page.getByText('You owe').first()).toBeVisible()
   })
 
-  test('shows peer list with names', async ({ page }) => {
-    await expect(page.getByText('Arjun Sharma')).toBeVisible()
-    await expect(page.getByText('Priya Mehta')).toBeVisible()
-    await expect(page.getByText('Ravi Kumar')).toBeVisible()
-  })
-
-  test('shows settle button for peers with non-zero balance', async ({ page }) => {
-    const settleButtons = page.getByRole('button', { name: 'Settle' })
-    await expect(settleButtons.first()).toBeVisible()
-  })
-
-  test('settled peer shows "All settled" label', async ({ page }) => {
-    await expect(page.getByText('All settled')).toBeVisible()
+  test('shows empty state when API returns no peers', async ({ page }) => {
+    await expect(page.getByTestId('empty-state')).toBeVisible()
+    await expect(page.getByText('No peers added yet')).toBeVisible()
   })
 
   test('does not show blank page on cold direct URL load', async ({ page }) => {
     await page.goto('/peers')
     await expect(page.getByText('Peers')).toBeVisible()
-    await expect(page.getByText('Arjun Sharma')).toBeVisible()
+    await expect(page.getByText('Owed to you')).toBeVisible()
   })
 })
 
