@@ -1,20 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
-import { listCategories, listRules } from '@/api/categories'
+import { listEarnings, listEarningSources } from '@/api/earnings'
 import { useAuthStore } from '@/store/auth'
 
-export function useCategories() {
+export function useEarnings() {
   return useQuery({
-    queryKey: ['categories'],
-    queryFn: listCategories,
+    queryKey: ['earnings'],
+    queryFn: listEarnings,
     enabled: useAuthStore.getState().isAuthenticated,
-    staleTime: 5 * 60_000,
   })
 }
 
-export function useRules() {
+export function useEarningSources() {
   return useQuery({
-    queryKey: ['categorization-rules'],
-    queryFn: listRules,
+    queryKey: ['earnings', 'sources'],
+    queryFn: listEarningSources,
     enabled: useAuthStore.getState().isAuthenticated,
     staleTime: 5 * 60_000,
   })
