@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from elixir.domains.peers.models import PeerBalance, PeerContact, PeerSettlement
@@ -172,6 +173,44 @@ class PeersRepository:
         self._db.add(settlement)
         await self._db.flush()
         return settlement
+
+    async def get_net_balances_by_contact(
+        self, user_id: uuid.UUID
+    ) -> dict[uuid.UUID, Decimal]:
+        """Net balance per contact in INR. Positive = owed_to_me, negative = i_owe."""
+        result = await self._db.execute(
+            select(
+                PeerBalance.peer_id,
+                PeerBalance.direction,
+                func.sum(PeerBalance.remaining_amount).label("total"),
+            )
+            .where(
+                PeerBalance.user_id == user_id,
+                PeerBalance.status.in_(["open", "partial"]),
+            )
+            .group_by(PeerBalance.peer_id, PeerBalance.direction)
+        )
+        net: dict[uuid.UUID, Decimal] = {}
+        for row in result.mappings().all():
+            peer_id = row["peer_id"]
+            total = Decimal(str(row["total"] or 0))
+            if row["direction"] == "owed_to_me":
+                net[peer_id] = net.get(peer_id, Decimal("0")) + total
+            else:
+                net[peer_id] = net.get(peer_id, Decimal("0")) - total
+        return net
+
+    async def list_open_balances_for_contact(
+        self, user_id: uuid.UUID, contact_id: uuid.UUID
+    ) -> list[PeerBalance]:
+        result = await self._db.execute(
+            select(PeerBalance).where(
+                PeerBalance.user_id == user_id,
+                PeerBalance.peer_id == contact_id,
+                PeerBalance.status.in_(["open", "partial"]),
+            )
+        )
+        return list(result.scalars().all())
 
     async def list_settlements(self, balance_id: uuid.UUID) -> list[PeerSettlement]:
         result = await self._db.execute(

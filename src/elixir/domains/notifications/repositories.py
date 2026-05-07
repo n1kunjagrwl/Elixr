@@ -91,6 +91,16 @@ class NotificationsRepository:
         if notification.read_at is None:
             notification.read_at = datetime.now(timezone.utc)
 
+    async def count_unread(self, user_id: uuid.UUID) -> int:
+        from sqlalchemy import func
+        result = await self._db.execute(
+            select(func.count()).where(
+                Notification.user_id == user_id,
+                Notification.read_at.is_(None),
+            )
+        )
+        return int(result.scalar_one())
+
     async def mark_all_read(self, user_id: uuid.UUID) -> int:
         result = await self._db.execute(
             update(Notification)

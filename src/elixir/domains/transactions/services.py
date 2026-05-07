@@ -15,10 +15,12 @@ from elixir.domains.transactions.events import (
 )
 from elixir.domains.transactions.repositories import TransactionsRepository
 from elixir.domains.transactions.schemas import (
+    CategorySpending,
     TransactionCreate,
     TransactionFilters,
     TransactionItemResponse,
     TransactionListResponse,
+    TransactionNetSummary,
     TransactionResponse,
     TransactionSummary,
     TransactionUpdate,
@@ -160,6 +162,42 @@ class TransactionsService:
         return PagedResponse(
             items=items, total=rows.total, page=rows.page, page_size=rows.page_size
         )
+
+    async def count_unreviewed(self, user_id: uuid.UUID) -> int:
+        return await self._repo.count_unreviewed(user_id)
+
+    async def get_net_summary(
+        self,
+        user_id: uuid.UUID,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> TransactionNetSummary:
+        totals = await self._repo.get_net_summary(user_id, date_from, date_to)
+        income_paise = int(totals.get("credit", Decimal("0")) * 100)
+        expense_paise = int(totals.get("debit", Decimal("0")) * 100)
+        return TransactionNetSummary(
+            income_paise=income_paise,
+            expense_paise=expense_paise,
+            net_paise=income_paise - expense_paise,
+        )
+
+    async def get_spending_by_category(
+        self,
+        user_id: uuid.UUID,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[CategorySpending]:
+        rows = await self._repo.get_spending_by_category(user_id, date_from, date_to)
+        return [
+            CategorySpending(
+                category_id=row["category_id"],
+                category_name=row["category_name"] or "Unknown",
+                category_icon=row.get("category_icon"),
+                total_paise=int(Decimal(str(row["total"])) * 100),
+            )
+            for row in rows
+            if row.get("category_id")
+        ]
 
     async def get_transaction(
         self,

@@ -42,11 +42,11 @@ test('calls GET /investments/holdings on load', async ({ page }) => {
   expect(request.method()).toBe('GET')
 })
 
-test('calls GET /investments/sips on load', async ({ page }) => {
+test('calls GET /investments/sip on load', async ({ page }) => {
   await emptySetup(page)
 
   const [request] = await Promise.all([
-    page.waitForRequest((req) => req.url().includes('/investments/sips') && req.method() === 'GET'),
+    page.waitForRequest((req) => /\/investments\/sip$/.test(new URL(req.url()).pathname) && req.method() === 'GET'),
     page.goto('/investments'),
   ])
 
@@ -144,7 +144,7 @@ test('SIPs tab renders name and monthly amount for each SIP', async ({ page }) =
         body: JSON.stringify({ total_value_paise: 0, invested_paise: 0, pnl_paise: 0, pnl_percent: 0 }),
       })
     }
-    if (url.includes('/investments/sips')) {
+    if (/\/investments\/sip$/.test(new URL(url).pathname)) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',

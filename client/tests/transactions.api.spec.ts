@@ -6,9 +6,10 @@
 import { test, expect } from '@playwright/test'
 import { mockAuthenticated } from './helpers'
 
+// Backend format — mapTransaction() transforms these into the frontend Transaction type
 const BASE_TRANSACTIONS = [
-  { id: 't1', account_id: 'a1', account_label: 'HDFC', date: new Date().toISOString(), description: 'Swiggy Order', amount_paise: -45000, category_id: 'c-food', category_name: 'Food & Dining', category_icon: '🍔', is_reviewed: true },
-  { id: 't2', account_id: 'a1', account_label: 'HDFC', date: new Date().toISOString(), description: 'Uber Ride', amount_paise: -18000, category_id: 'c-transport', category_name: 'Transport', category_icon: '🚗', is_reviewed: false },
+  { id: 't1', account_id: 'a1', account_kind: 'bank', account_name: 'HDFC', date: new Date().toISOString(), raw_description: 'Swiggy Order', amount: '450.00', currency: 'INR', type: 'debit', source: 'manual', notes: null, primary_category_id: 'c-food', primary_category_name: 'Food & Dining', primary_category_icon: '🍔', created_at: null, updated_at: null },
+  { id: 't2', account_id: 'a1', account_kind: 'bank', account_name: 'HDFC', date: new Date().toISOString(), raw_description: 'Uber Ride', amount: '180.00', currency: 'INR', type: 'debit', source: 'manual', notes: null, primary_category_id: null, primary_category_name: null, primary_category_icon: null, created_at: null, updated_at: null },
 ]
 
 const BASE_CATEGORIES = [
@@ -149,7 +150,7 @@ test('renders transaction description and formatted amount from API response', a
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 'tx-a', account_id: 'a1', account_label: 'HDFC', date: new Date().toISOString(), description: 'Zomato Delivery', amount_paise: -38000, category_id: 'c-food', category_name: 'Food & Dining', category_icon: '🍕', is_reviewed: true },
+          { id: 'tx-a', account_id: 'a1', account_kind: 'bank', account_name: 'HDFC', date: new Date().toISOString(), raw_description: 'Zomato Delivery', amount: '380.00', currency: 'INR', type: 'debit', source: 'manual', notes: null, primary_category_id: 'c-food', primary_category_name: 'Food & Dining', primary_category_icon: '🍕', created_at: null, updated_at: null },
         ]),
       })
     }
@@ -172,7 +173,7 @@ test('handles paginated response envelope { items: [...] }', async ({ page }) =>
         contentType: 'application/json',
         body: JSON.stringify({
           items: [
-            { id: 'tx-p', account_id: 'a1', account_label: 'HDFC', date: new Date().toISOString(), description: 'Paginated TX', amount_paise: -10000, category_id: null, category_name: null, category_icon: null, is_reviewed: true },
+            { id: 'tx-p', account_id: 'a1', account_kind: 'bank', account_name: 'HDFC', date: new Date().toISOString(), raw_description: 'Paginated TX', amount: '100.00', currency: 'INR', type: 'debit', source: 'manual', notes: null, primary_category_id: null, primary_category_name: null, primary_category_icon: null, created_at: null, updated_at: null },
           ],
           total: 1,
           page: 1,

@@ -15,6 +15,7 @@ from elixir.domains.investments.schemas import (
     HoldingUpdate,
     InstrumentCreate,
     InstrumentResponse,
+    PortfolioSummary,
     SIPCreate,
     SIPResponse,
     SIPUpdate,
@@ -88,6 +89,21 @@ class InvestmentsService:
     async def list_holdings(self, user_id: uuid.UUID) -> list[HoldingResponse]:
         holdings = await self._repo.list_holdings(user_id)
         return [HoldingResponse.model_validate(h) for h in holdings]
+
+    async def get_portfolio_summary(self, user_id: uuid.UUID) -> PortfolioSummary:
+        holdings = await self._repo.list_holdings(user_id)
+        total_value = sum((h.current_value or Decimal("0")) for h in holdings)
+        total_invested = sum((h.total_invested or Decimal("0")) for h in holdings)
+        total_value_paise = int(total_value * 100)
+        invested_paise = int(total_invested * 100)
+        pnl_paise = total_value_paise - invested_paise
+        pnl_percent = float(pnl_paise / invested_paise * 100) if invested_paise > 0 else 0.0
+        return PortfolioSummary(
+            total_value_paise=total_value_paise,
+            invested_paise=invested_paise,
+            pnl_paise=pnl_paise,
+            pnl_percent=pnl_percent,
+        )
 
     async def add_holding(
         self, user_id: uuid.UUID, data: HoldingCreate

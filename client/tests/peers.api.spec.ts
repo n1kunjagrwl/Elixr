@@ -16,14 +16,14 @@ async function emptySetup(page: Parameters<typeof mockAuthenticated>[0]) {
   )
 }
 
-// ── GET /peers ─────────────────────────────────────────────────────────────────
+// ── GET /peers/contacts ────────────────────────────────────────────────────────
 
-test('calls GET /peers on page load', async ({ page }) => {
+test('calls GET /peers/contacts on page load', async ({ page }) => {
   await emptySetup(page)
 
   const [request] = await Promise.all([
     page.waitForRequest(
-      (req) => /\/api\/v1\/peers$/.test(new URL(req.url()).pathname) && req.method() === 'GET'
+      (req) => /\/api\/v1\/peers\/contacts$/.test(new URL(req.url()).pathname) && req.method() === 'GET'
     ),
     page.goto('/peers'),
   ])
@@ -35,7 +35,7 @@ test('renders peer names from API response', async ({ page }) => {
   await mockAuthenticated(page)
   await page.route(/\/api\/v1\/(?!auth\/)/, (route) => {
     const url = route.request().url()
-    if (/\/api\/v1\/peers$/.test(new URL(url).pathname)) {
+    if (/\/api\/v1\/peers\/contacts$/.test(new URL(url).pathname)) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -57,21 +57,21 @@ test('shows empty state when API returns empty array', async ({ page }) => {
   await expect(page.getByTestId('empty-state')).toBeVisible()
 })
 
-// ── POST /peers/{id}/settlements (Settle button) ───────────────────────────────
+// ── POST /peers/contacts/{id}/settle (Settle button) ──────────────────────────
 
-test('clicking Settle calls POST /peers/{id}/settlements', async ({ page }) => {
+test('clicking Settle calls POST /peers/contacts/{id}/settle', async ({ page }) => {
   await mockAuthenticated(page)
   await page.route(/\/api\/v1\/(?!auth\/)/, (route) => {
     const url = route.request().url()
-    if (/\/api\/v1\/peers$/.test(new URL(url).pathname)) {
+    if (/\/api\/v1\/peers\/contacts$/.test(new URL(url).pathname)) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(MOCK_PEERS),
       })
     }
-    if (url.includes('/settlements')) {
-      return route.fulfill({ status: 201, contentType: 'application/json', body: '{}' })
+    if (url.includes('/contacts/') && url.includes('/settle')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
   })
@@ -79,37 +79,36 @@ test('clicking Settle calls POST /peers/{id}/settlements', async ({ page }) => {
   await page.getByTestId('peer-row-p1').waitFor()
 
   const [request] = await Promise.all([
-    page.waitForRequest((req) => req.url().includes('/peers/p1/settlements')),
+    page.waitForRequest((req) => req.url().includes('/peers/contacts/p1/settle')),
     page.getByTestId('peer-row-p1').getByRole('button', { name: 'Settle' }).click(),
   ])
 
   expect(request.method()).toBe('POST')
 })
 
-test('Settle button sends amount_paise equal to absolute net_balance_paise', async ({ page }) => {
+test('clicking Settle sends no body (server derives amount from open balances)', async ({ page }) => {
   await mockAuthenticated(page)
   await page.route(/\/api\/v1\/(?!auth\/)/, (route) => {
     const url = route.request().url()
-    if (/\/api\/v1\/peers$/.test(new URL(url).pathname)) {
+    if (/\/api\/v1\/peers\/contacts$/.test(new URL(url).pathname)) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(MOCK_PEERS),
       })
     }
-    if (url.includes('/peers/') && url.includes('/settlements')) {
-      return route.fulfill({ status: 201, contentType: 'application/json', body: '{}' })
+    if (url.includes('/contacts/') && url.includes('/settle')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
   })
   await page.goto('/peers')
 
   const [request] = await Promise.all([
-    page.waitForRequest((req) => req.url().includes('/peers/p1/settlements')),
+    page.waitForRequest((req) => req.url().includes('/peers/contacts/p1/settle')),
     page.getByTestId('peer-row-p1').getByRole('button', { name: 'Settle' }).click(),
   ])
 
-  const body = JSON.parse(request.postData() ?? '{}')
-  // p1 has net_balance_paise: 50000 → settle with amount 50000
-  expect(body.amount_paise).toBe(50000)
+  // No body sent — server settles all open balances
+  expect(request.postData()).toBeFalsy()
 })

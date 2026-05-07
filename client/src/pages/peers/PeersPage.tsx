@@ -214,12 +214,7 @@ export default function PeersPage() {
                         <button
                           className="text-xs text-primary disabled:opacity-50"
                           disabled={settle.isPending}
-                          onClick={() =>
-                            settle.mutate({
-                              peerId: peer.id,
-                              amount_paise: Math.abs(peer.net_balance_paise),
-                            })
-                          }
+                          onClick={() => settle.mutate({ peerId: peer.id })}
                         >
                           Settle
                         </button>

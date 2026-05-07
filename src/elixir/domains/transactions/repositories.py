@@ -257,6 +257,72 @@ class TransactionsRepository:
         result = await self._db.execute(query)
         return list(result.scalars().all())
 
+    async def count_unreviewed(self, user_id: uuid.UUID) -> int:
+        result = await self._db.execute(
+            text(
+                "SELECT COUNT(*) FROM transactions t "
+                "WHERE t.user_id = :user_id "
+                "AND NOT EXISTS ("
+                "  SELECT 1 FROM transaction_items ti "
+                "  WHERE ti.transaction_id = t.id AND ti.is_primary = true"
+                ")"
+            ),
+            {"user_id": str(user_id)},
+        )
+        return int(result.scalar_one())
+
+    async def get_net_summary(
+        self,
+        user_id: uuid.UUID,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> dict[str, Decimal]:
+        clauses = ["user_id = :user_id", "type != 'transfer'"]
+        params: dict[str, Any] = {"user_id": str(user_id)}
+        if date_from:
+            clauses.append("date >= :date_from")
+            params["date_from"] = date_from
+        if date_to:
+            clauses.append("date <= :date_to")
+            params["date_to"] = date_to
+        where = " AND ".join(clauses)
+        result = await self._db.execute(
+            text(f"SELECT type, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE {where} GROUP BY type"),
+            params,
+        )
+        return {row["type"]: Decimal(str(row["total"])) for row in result.mappings().all()}
+
+    async def get_spending_by_category(
+        self,
+        user_id: uuid.UUID,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[dict[str, Any]]:
+        clauses = ["t.user_id = :user_id", "t.type = 'debit'"]
+        params: dict[str, Any] = {"user_id": str(user_id)}
+        if date_from:
+            clauses.append("t.date >= :date_from")
+            params["date_from"] = date_from
+        if date_to:
+            clauses.append("t.date <= :date_to")
+            params["date_to"] = date_to
+        where = " AND ".join(clauses)
+        result = await self._db.execute(
+            text(
+                f"SELECT ti.category_id::text, cfu.name AS category_name, cfu.icon AS category_icon, "
+                f"COALESCE(SUM(ti.amount), 0) AS total "
+                f"FROM transactions t "
+                f"JOIN transaction_items ti ON ti.transaction_id = t.id AND ti.is_primary = true "
+                f"LEFT JOIN categories_for_user cfu "
+                f"  ON cfu.id = ti.category_id AND (cfu.user_id = t.user_id OR cfu.user_id IS NULL) "
+                f"WHERE {where} "
+                f"GROUP BY ti.category_id, cfu.name, cfu.icon "
+                f"ORDER BY total DESC"
+            ),
+            params,
+        )
+        return [dict(row) for row in result.mappings().all()]
+
     async def add_outbox_event(self, event_type: str, payload: dict[str, Any]) -> None:
         row = TransactionsOutbox(event_type=event_type, payload=payload)
         self._db.add(row)

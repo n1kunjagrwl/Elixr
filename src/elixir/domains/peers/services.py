@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +32,13 @@ class PeersService:
 
     async def list_contacts(self, user_id: uuid.UUID) -> list[PeerContactResponse]:
         contacts = await self._repo.list_contacts(user_id)
-        return [PeerContactResponse.model_validate(c) for c in contacts]
+        net_balances = await self._repo.get_net_balances_by_contact(user_id)
+        return [
+            PeerContactResponse.model_validate(c).model_copy(
+                update={"net_balance_paise": int(net_balances.get(c.id, Decimal("0")) * 100)}
+            )
+            for c in contacts
+        ]
 
     async def add_contact(
         self, user_id: uuid.UUID, data: PeerContactCreate
@@ -71,6 +78,31 @@ class PeersService:
             )
         await self._repo.delete_contact(contact)
         await self._db.commit()
+
+    async def settle_all_for_contact(
+        self, user_id: uuid.UUID, contact_id: uuid.UUID
+    ) -> dict:
+        contact = await self._repo.get_contact(user_id, contact_id)
+        if contact is None:
+            raise PeerContactNotFoundError(f"Peer contact {contact_id} not found.")
+        balances = await self._repo.list_open_balances_for_contact(user_id, contact_id)
+        now = datetime.now(timezone.utc)
+        count = 0
+        for balance in balances:
+            remaining = Decimal(str(balance.remaining_amount))
+            if remaining <= 0:
+                continue
+            await self._repo.create_settlement(
+                balance_id=balance.id,
+                amount=remaining,
+                currency=balance.currency,
+                settled_at=now,
+            )
+            new_settled = Decimal(str(balance.settled_amount)) + remaining
+            await self._repo.update_balance_settled_amount(balance, new_settled, "settled")
+            count += 1
+        await self._db.commit()
+        return {"settled": count}
 
     # ── Balances ──────────────────────────────────────────────────────────────
 

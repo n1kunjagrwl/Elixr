@@ -25,6 +25,13 @@ NotificationsSvc = Annotated[NotificationsService, Depends(get_notifications_ser
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 
 
+@router.get("/unread-count")
+async def get_unread_count(ctx: RequestCtx, svc: NotificationsSvc) -> dict:
+    """Count unread notifications for the authenticated user."""
+    count = await svc.get_unread_count(ctx.user_id)
+    return {"count": count}
+
+
 @router.get("", response_model=list[NotificationResponse])
 async def list_notifications(
     ctx: RequestCtx,

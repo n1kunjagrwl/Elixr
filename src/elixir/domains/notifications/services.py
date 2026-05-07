@@ -44,6 +44,9 @@ class NotificationsService:
         await self._repo.mark_read(notification)
         await self._db.commit()
 
+    async def get_unread_count(self, user_id: uuid.UUID) -> int:
+        return await self._repo.count_unread(user_id)
+
     async def mark_all_read(self, user_id: uuid.UUID) -> dict:
         count = await self._repo.mark_all_read(user_id)
         await self._db.commit()

@@ -6,8 +6,12 @@ export async function listNotifications(): Promise<Notification[]> {
   return data
 }
 
-export async function markRead(ids: string[]): Promise<void> {
-  await api.post('/notifications/mark-read', { ids })
+export async function markAllRead(): Promise<void> {
+  await api.patch('/notifications/read-all')
+}
+
+export async function markRead(id: string): Promise<void> {
+  await api.patch(`/notifications/${id}/read`)
 }
 
 export async function getUnreadCount(): Promise<{ count: number }> {

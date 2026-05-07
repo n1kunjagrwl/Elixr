@@ -65,6 +65,16 @@ async def edit_contact(
     return await svc.edit_contact(ctx.user_id, contact_id, body)
 
 
+@router.post("/contacts/{contact_id}/settle")
+async def settle_all_for_contact(
+    contact_id: uuid.UUID,
+    ctx: RequestCtx,
+    svc: PeersSvc,
+) -> dict:
+    """Settle all open balances for a peer contact in one action."""
+    return await svc.settle_all_for_contact(ctx.user_id, contact_id)
+
+
 @router.delete("/contacts/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_contact(
     contact_id: uuid.UUID,

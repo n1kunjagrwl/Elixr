@@ -11,10 +11,11 @@ const MOCK_CATEGORIES = [
   { id: 'c-salary', name: 'Salary', icon: '💼', color: '#22c55e', is_system: true },
 ]
 
+// Backend format — mapTransaction() transforms these into the frontend Transaction type
 const MOCK_TRANSACTIONS = [
-  { id: 't1', account_id: 'a1', account_label: 'HDFC', date: new Date().toISOString(), description: 'Swiggy Order', amount_paise: -45000, category_id: 'c-food', category_name: 'Food & Dining', category_icon: '🍔', is_reviewed: true },
-  { id: 't2', account_id: 'a1', account_label: 'HDFC', date: new Date().toISOString(), description: 'Salary — Think41', amount_paise: 8500000, category_id: 'c-salary', category_name: 'Salary', category_icon: '💼', is_reviewed: true },
-  { id: 't3', account_id: 'a1', account_label: 'HDFC', date: new Date().toISOString(), description: 'Uber Ride', amount_paise: -18000, category_id: 'c-transport', category_name: 'Transport', category_icon: '🚗', is_reviewed: false },
+  { id: 't1', account_id: 'a1', account_kind: 'bank', account_name: 'HDFC', date: new Date().toISOString(), raw_description: 'Swiggy Order', amount: '450.00', currency: 'INR', type: 'debit', source: 'manual', notes: null, primary_category_id: 'c-food', primary_category_name: 'Food & Dining', primary_category_icon: '🍔', created_at: null, updated_at: null },
+  { id: 't2', account_id: 'a1', account_kind: 'bank', account_name: 'HDFC', date: new Date().toISOString(), raw_description: 'Salary — Think41', amount: '85000.00', currency: 'INR', type: 'credit', source: 'manual', notes: null, primary_category_id: 'c-salary', primary_category_name: 'Salary', primary_category_icon: '💼', created_at: null, updated_at: null },
+  { id: 't3', account_id: 'a1', account_kind: 'bank', account_name: 'HDFC', date: new Date().toISOString(), raw_description: 'Uber Ride', amount: '180.00', currency: 'INR', type: 'debit', source: 'manual', notes: null, primary_category_id: null, primary_category_name: null, primary_category_icon: null, created_at: null, updated_at: null },
 ]
 
 async function setupTransactions(page: Parameters<typeof mockAuthenticated>[0], options: {

@@ -311,7 +311,7 @@ test('Peer Balances: calls GET /peers', async ({ page }) => {
   await setupHome(page)
 
   const [request] = await Promise.all([
-    page.waitForRequest((req) => /\/api\/v1\/peers$/.test(new URL(req.url()).pathname)),
+    page.waitForRequest((req) => /\/api\/v1\/peers\/contacts$/.test(new URL(req.url()).pathname)),
     page.goto('/home'),
   ])
 
@@ -322,7 +322,7 @@ test('Peer Balances: renders peer names from API response', async ({ page }) => 
   await mockAuthenticated(page)
   await page.route(/\/api\/v1\/(?!auth\/)/, (route) => {
     const url = route.request().url()
-    if (/\/api\/v1\/peers$/.test(new URL(url).pathname)) {
+    if (/\/api\/v1\/peers\/contacts$/.test(new URL(url).pathname)) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -361,7 +361,7 @@ test('Peer Balances: shows top 3 peers by absolute balance, not more', async ({ 
   await mockAuthenticated(page)
   await page.route(/\/api\/v1\/(?!auth\/)/, (route) => {
     const url = route.request().url()
-    if (/\/api\/v1\/peers$/.test(new URL(url).pathname)) {
+    if (/\/api\/v1\/peers\/contacts$/.test(new URL(url).pathname)) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',

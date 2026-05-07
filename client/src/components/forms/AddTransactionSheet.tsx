@@ -42,7 +42,7 @@ export function AddTransactionSheet({ open, onOpenChange }: Props) {
     const amountNum = parseFloat(amount)
     if (isNaN(amountNum) || amountNum <= 0) return
 
-    const account_kind = account.type === 'credit_card' ? 'credit_card' : 'bank_account'
+    const account_kind = account.type === 'credit_card' ? 'credit_card' : 'bank'
 
     create.mutate(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

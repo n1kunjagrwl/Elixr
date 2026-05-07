@@ -18,7 +18,7 @@ async function setupPeers(
   await mockAuthenticated(page)
   await page.route(/\/api\/v1\/(?!auth\/)/, (route) => {
     const url = route.request().url()
-    if (/\/api\/v1\/peers$/.test(new URL(url).pathname)) {
+    if (/\/api\/v1\/peers\/contacts$/.test(new URL(url).pathname)) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',

@@ -14,6 +14,7 @@ from elixir.domains.investments.schemas import (
     HoldingUpdate,
     InstrumentCreate,
     InstrumentResponse,
+    PortfolioSummary,
     SIPConfirmRequest,
     SIPCreate,
     SIPResponse,
@@ -63,6 +64,15 @@ async def create_instrument(
 ):
     """Create a new instrument in the shared master registry."""
     return await svc.create_instrument(body)
+
+
+# ── Portfolio Summary ──────────────────────────────────────────────────────────
+
+
+@router.get("/summary", response_model=PortfolioSummary)
+async def get_portfolio_summary(ctx: RequestCtx, svc: InvestmentsSvc) -> PortfolioSummary:
+    """Compute total portfolio value, invested amount, PnL, and PnL% from holdings."""
+    return await svc.get_portfolio_summary(ctx.user_id)
 
 
 # ── Holdings ───────────────────────────────────────────────────────────────────

@@ -35,6 +35,7 @@ class PeerContactResponse(BaseModel):
     notes: str | None
     created_at: datetime | None
     updated_at: datetime | None
+    net_balance_paise: int = 0
 
     model_config = {"from_attributes": True}
 

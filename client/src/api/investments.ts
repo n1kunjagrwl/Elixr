@@ -50,7 +50,7 @@ export async function createHolding(payload: HoldingCreate): Promise<Holding> {
 }
 
 export async function listSips(): Promise<Array<{ id: string; name: string; amount_paise: number; next_date: string; status: string }>> {
-  const { data } = await api.get('/investments/sips')
+  const { data } = await api.get('/investments/sip')
   return data
 }
 

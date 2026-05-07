@@ -5,9 +5,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request, status
 
 from elixir.domains.transactions.schemas import (
+    CategorySpending,
     TransactionCreate,
     TransactionFilters,
     TransactionListResponse,
+    TransactionNetSummary,
     TransactionResponse,
     TransactionSource,
     TransactionType,
@@ -27,6 +29,35 @@ def get_transactions_service(
 
 
 TransactionsSvc = Annotated[TransactionsService, Depends(get_transactions_service)]
+
+
+@router.get("/unreviewed/count")
+async def get_unreviewed_count(
+    ctx: RequestCtx,
+    svc: TransactionsSvc,
+) -> dict:
+    count = await svc.count_unreviewed(ctx.user_id)
+    return {"count": count}
+
+
+@router.get("/summary/net", response_model=TransactionNetSummary)
+async def get_net_summary(
+    ctx: RequestCtx,
+    svc: TransactionsSvc,
+    from_date: date | None = Query(default=None, alias="from"),
+    to_date: date | None = Query(default=None, alias="to"),
+) -> TransactionNetSummary:
+    return await svc.get_net_summary(ctx.user_id, from_date, to_date)
+
+
+@router.get("/summary/by-category", response_model=list[CategorySpending])
+async def get_spending_by_category(
+    ctx: RequestCtx,
+    svc: TransactionsSvc,
+    from_date: date | None = Query(default=None, alias="from"),
+    to_date: date | None = Query(default=None, alias="to"),
+) -> list[CategorySpending]:
+    return await svc.get_spending_by_category(ctx.user_id, from_date, to_date)
 
 
 @router.get("", response_model=TransactionListResponse)

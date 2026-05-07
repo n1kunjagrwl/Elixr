@@ -121,3 +121,16 @@ class TransactionResponse(BaseModel):
 
 
 TransactionListResponse = PagedResponse[TransactionSummary]
+
+
+class TransactionNetSummary(BaseModel):
+    income_paise: int
+    expense_paise: int
+    net_paise: int
+
+
+class CategorySpending(BaseModel):
+    category_id: str
+    category_name: str
+    category_icon: str | None = None
+    total_paise: int

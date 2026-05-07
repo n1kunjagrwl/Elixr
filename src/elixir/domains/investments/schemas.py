@@ -170,3 +170,10 @@ class SIPConfirmRequest(BaseModel):
 class PortfolioSnapshotResponse(BaseModel):
     snapshot_date: date
     total_value: Decimal
+
+
+class PortfolioSummary(BaseModel):
+    total_value_paise: int
+    invested_paise: int
+    pnl_paise: int
+    pnl_percent: float

@@ -42,7 +42,7 @@ async function setupInvestments(
     if (url.includes('/investments/holdings')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(holdings) })
     }
-    if (url.includes('/investments/sips')) {
+    if (/\/investments\/sip$/.test(new URL(url).pathname)) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(sips) })
     }
     if (url.includes('/investments/fds')) {
