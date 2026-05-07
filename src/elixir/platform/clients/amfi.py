@@ -1,11 +1,8 @@
-import logging
 from typing import Any
 
 import httpx
 
 from elixir.shared.config import Settings
-
-logger = logging.getLogger(__name__)
 
 _AMFI_URL = "https://api.mfapi.in/mf"
 

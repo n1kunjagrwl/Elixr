@@ -1,8 +1,8 @@
-import logging
 import time
 import uuid
 from uuid import UUID
 
+from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -12,8 +12,6 @@ from elixir.platform.security import (
     TokenExpiredError as PlatformTokenExpiredError,
     TokenInvalidError as PlatformTokenInvalidError,
 )
-
-logger = logging.getLogger(__name__)
 
 _PUBLIC_PATHS = frozenset(
     {
@@ -61,26 +59,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Logs every request with method, path, status code, and duration."""
+    """Logs every request with method, path, status code, duration, and request_id."""
 
     async def dispatch(self, request: Request, call_next) -> Response:
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
         start = time.perf_counter()
 
-        response = await call_next(request)
-
-        duration_ms = (time.perf_counter() - start) * 1000
-        logger.info(
-            "%s %s %d %.1fms",
-            request.method,
-            request.url.path,
-            response.status_code,
-            duration_ms,
-            extra={
-                "request_id": request_id,
-                "user_id": str(getattr(request.state, "user_id", None)),
-            },
-        )
-        response.headers["X-Request-ID"] = request_id
-        return response
+        with logger.contextualize(request_id=request_id):
+            response = await call_next(request)
+            duration_ms = (time.perf_counter() - start) * 1000
+            user_id = str(getattr(request.state, "user_id", None))
+            logger.bind(user_id=user_id).info(
+                "{} {} {} {:.1f}ms",
+                request.method,
+                request.url.path,
+                response.status_code,
+                duration_ms,
+            )
+            response.headers["X-Request-ID"] = request_id
+            return response

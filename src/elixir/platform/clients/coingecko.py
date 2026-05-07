@@ -1,10 +1,6 @@
-import logging
-
 import httpx
 
 from elixir.shared.config import Settings
-
-logger = logging.getLogger(__name__)
 
 _BASE = "https://api.coingecko.com/api/v3"
 

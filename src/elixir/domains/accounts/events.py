@@ -1,11 +1,9 @@
-import logging
 from typing import ClassVar
 
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from elixir.shared.events import EventPayload
-
-logger = logging.getLogger(__name__)
 
 
 # ── Event dataclasses ─────────────────────────────────────────────────────────
@@ -62,7 +60,7 @@ class AccountRemoved:
 async def handle_account_linked(payload: EventPayload, session: AsyncSession) -> None:
     """Placeholder for downstream reactions to a new account being linked."""
     logger.info(
-        "Account linked: %s (kind=%s) for user %s",
+        "Account linked: {} (kind={}) for user {}",
         payload.get("account_id"),
         payload.get("account_kind"),
         payload.get("user_id"),
@@ -72,7 +70,7 @@ async def handle_account_linked(payload: EventPayload, session: AsyncSession) ->
 async def handle_account_removed(payload: EventPayload, session: AsyncSession) -> None:
     """Placeholder for downstream reactions to an account being deactivated."""
     logger.info(
-        "Account removed: %s (kind=%s) for user %s",
+        "Account removed: {} (kind={}) for user {}",
         payload.get("account_id"),
         payload.get("account_kind"),
         payload.get("user_id"),

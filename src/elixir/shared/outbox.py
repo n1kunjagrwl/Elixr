@@ -1,13 +1,11 @@
 import asyncio
-import logging
 from typing import Any
 
+from loguru import logger
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from elixir.shared.events import EventBus
-
-logger = logging.getLogger(__name__)
 
 
 class OutboxPoller:
@@ -28,7 +26,7 @@ class OutboxPoller:
         self._interval = poll_interval_seconds
 
     async def run(self) -> None:
-        logger.info("OutboxPoller started (interval=%ds)", self._interval)
+        logger.info("OutboxPoller started (interval={}s)", self._interval)
         while True:
             try:
                 await self._poll_once()
@@ -70,11 +68,8 @@ class OutboxPoller:
             await session.commit()
         except Exception:
             await session.rollback()
-            logger.exception(
-                "Failed to dispatch outbox row",
-                extra={
-                    "table": table,
-                    "row_id": str(row.id),
-                    "event_type": row.event_type,
-                },
-            )
+            logger.bind(
+                table=table,
+                row_id=str(row.id),
+                event_type=row.event_type,
+            ).exception("Failed to dispatch outbox row")

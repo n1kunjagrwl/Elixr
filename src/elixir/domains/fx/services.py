@@ -9,19 +9,17 @@ Design decisions:
 - refresh_rates() is called by a Temporal activity (Pattern 3 — sync return value needed).
 """
 
-import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from elixir.domains.fx.models import FXRate
 from elixir.domains.fx.repositories import FXRepository
 from elixir.domains.fx.schemas import ConvertResponse
 from elixir.shared.exceptions import FXRateUnavailableError
-
-logger = logging.getLogger(__name__)
 
 _STALENESS_THRESHOLD = timedelta(hours=24)
 
@@ -178,7 +176,7 @@ class FXService:
         age = datetime.now(timezone.utc) - rate_row.fetched_at
         if age > _STALENESS_THRESHOLD:
             logger.warning(
-                "Stale FX rate: %s→%s fetched at %s (%.1f hours ago). "
+                "Stale FX rate: {}→{} fetched at {} ({:.1f} hours ago). "
                 "The FXRateRefreshWorkflow may not be running.",
                 rate_row.from_currency,
                 rate_row.to_currency,

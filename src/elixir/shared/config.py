@@ -60,3 +60,7 @@ class Settings(BaseSettings):
 
     # Outbox
     outbox_poll_interval_seconds: int = 2
+
+    # Logging
+    app_env: str = "development"  # "development" | "production"
+    log_level: str = "INFO"

@@ -1,11 +1,9 @@
-import logging
 from typing import ClassVar
 
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from elixir.shared.events import EventPayload
-
-logger = logging.getLogger(__name__)
 
 
 # ── Event dataclasses ─────────────────────────────────────────────────────────
@@ -41,7 +39,7 @@ class CategoryCreated:
 async def handle_category_created(payload: EventPayload, session: AsyncSession) -> None:
     """Placeholder for downstream reactions to a new category being created."""
     logger.info(
-        "Category created: %s (kind=%s) for user %s",
+        "Category created: {} (kind={}) for user {}",
         payload.get("category_id"),
         payload.get("kind"),
         payload.get("user_id"),

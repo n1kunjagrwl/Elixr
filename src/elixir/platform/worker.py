@@ -1,16 +1,18 @@
 """Temporal worker entrypoint. Run with: python -m elixir.platform.worker"""
 
 import asyncio
-import logging
+from loguru import logger
 from temporalio.worker import Worker
-
-logger = logging.getLogger(__name__)
 
 
 async def run_worker() -> None:
     from elixir.shared.config import Settings
 
     settings = Settings()
+
+    from elixir.runtime.logging import configure_logging
+
+    configure_logging(level=settings.log_level, dev=settings.app_env == "development")
 
     from elixir.platform.temporal import build_temporal_client
 
@@ -32,7 +34,7 @@ async def run_worker() -> None:
         workflows=workflows,
         activities=activities,
     )
-    logger.info("Temporal worker starting on queue: %s", settings.temporal_task_queue)
+    logger.info("Temporal worker starting on queue: {}", settings.temporal_task_queue)
     await worker.run()
 
 
@@ -52,7 +54,7 @@ def _collect_all(session_factory, settings) -> tuple[list, list]:
         workflows.append(OTPDeliveryWorkflow)
         activities.append(otp_activities.send_otp_via_twilio)
     except Exception as exc:
-        logger.warning("Could not load identity OTP workflow: %s", exc)
+        logger.warning("Could not load identity OTP workflow: {}", exc)
     _safe_collect(workflows, activities, "elixir.domains.fx.workflows.fx_rate_refresh")
     _safe_collect(
         workflows,
@@ -89,9 +91,8 @@ def _safe_collect(workflows: list, activities: list, module_path: str) -> None:
         if hasattr(mod, "ACTIVITIES"):
             activities.extend(mod.ACTIVITIES)
     except Exception as exc:
-        logger.warning("Could not load workflow module %s: %s", module_path, exc)
+        logger.warning("Could not load workflow module {}: {}", module_path, exc)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     asyncio.run(run_worker())

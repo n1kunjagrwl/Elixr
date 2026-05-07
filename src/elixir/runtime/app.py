@@ -1,22 +1,23 @@
-import logging
 from collections.abc import Mapping, Sequence
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from loguru import logger
 
+from elixir.runtime.logging import configure_logging
 from elixir.shared.config import Settings
 from elixir.shared.exceptions import ElixirError
 from elixir.runtime.lifespan import lifespan
 from elixir.runtime.middleware import AuthMiddleware, RequestLoggingMiddleware
 
-logger = logging.getLogger(__name__)
-
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     if settings is None:
         settings = Settings()
+
+    configure_logging(level=settings.log_level, dev=settings.app_env == "development")
 
     app = FastAPI(
         title="Elixr",
@@ -102,15 +103,8 @@ def _register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ElixirError)
     async def elixir_error_handler(request: Request, exc: ElixirError) -> JSONResponse:
         if exc.http_status >= 500:
-            logger.error(
-                "ElixirError %s: %s",
-                exc.error_code,
-                exc.detail,
-                extra={
-                    "request_id": getattr(request.state, "request_id", None),
-                    "context": exc.context,
-                },
-                exc_info=exc,
+            logger.opt(exception=exc).bind(context=exc.context).error(
+                "ElixirError {}: {}", exc.error_code, exc.detail
             )
         return JSONResponse(
             status_code=exc.http_status,
@@ -149,11 +143,8 @@ def _register_exception_handlers(app: FastAPI) -> None:
     async def unhandled_exception_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:
-        logger.exception(
-            "Unhandled exception on %s %s",
-            request.method,
-            request.url.path,
-            extra={"request_id": getattr(request.state, "request_id", None)},
+        logger.opt(exception=exc).error(
+            "Unhandled exception on {} {}", request.method, request.url.path
         )
         return JSONResponse(
             status_code=500,

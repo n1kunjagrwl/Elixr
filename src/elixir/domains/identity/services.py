@@ -123,10 +123,10 @@ class IdentityService:
                     task_queue=self._settings.temporal_task_queue,
                 )
             except Exception:
-                import logging
+                from loguru import logger
 
-                logging.getLogger(__name__).warning(
-                    "Temporal unavailable — falling back to direct SMS", exc_info=True
+                logger.opt(exception=True).warning(
+                    "Temporal unavailable — falling back to direct SMS"
                 )
                 await self._twilio.send_otp(phone)
         else:

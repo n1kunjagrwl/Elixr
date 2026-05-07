@@ -1,11 +1,8 @@
-import logging
-
 import httpx
+from loguru import logger
 
 from elixir.shared.config import Settings
 from elixir.shared.exceptions import TwilioError
-
-logger = logging.getLogger(__name__)
 
 
 class TwilioClient:
@@ -28,10 +25,10 @@ class TwilioClient:
             )
             resp.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            logger.error("Twilio send_otp failed: %s", exc.response.text)
+            logger.error("Twilio send_otp failed: {}", exc.response.text)
             raise TwilioError(f"Failed to send OTP: {exc.response.status_code}")
         except httpx.RequestError as exc:
-            logger.error("Twilio request error: %s", exc)
+            logger.error("Twilio request error: {}", exc)
             raise TwilioError("Twilio connection error")
 
     async def check_otp(self, phone_e164: str, code: str) -> bool:
@@ -46,10 +43,10 @@ class TwilioClient:
             resp.raise_for_status()
             return resp.json().get("status") == "approved"
         except httpx.HTTPStatusError as exc:
-            logger.error("Twilio check_otp failed: %s", exc.response.text)
+            logger.error("Twilio check_otp failed: {}", exc.response.text)
             raise TwilioError(f"Failed to verify OTP: {exc.response.status_code}")
         except httpx.RequestError as exc:
-            logger.error("Twilio request error: %s", exc)
+            logger.error("Twilio request error: {}", exc)
             raise TwilioError("Twilio connection error")
 
     async def close(self) -> None:

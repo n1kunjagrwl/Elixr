@@ -1,8 +1,8 @@
 import asyncio
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from loguru import logger
 
 from elixir.platform.db import build_engine, build_session_factory
 from elixir.platform.temporal import build_temporal_client
@@ -16,8 +16,6 @@ from elixir.platform.clients.twilio import TwilioClient
 from elixir.shared.config import Settings
 from elixir.shared.events import EventBus
 from elixir.shared.outbox import OutboxPoller
-
-logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -47,10 +45,10 @@ async def lifespan(app: FastAPI):
             tls=settings.temporal_tls,
         )
         app.state.temporal_client = temporal_client
-        logger.info("Connected to Temporal at %s", settings.temporal_address)
+        logger.info("Connected to Temporal at {}", settings.temporal_address)
     except Exception:
-        logger.warning(
-            "Could not connect to Temporal — workflows disabled", exc_info=True
+        logger.opt(exception=True).warning(
+            "Could not connect to Temporal — workflows disabled"
         )
         app.state.temporal_client = None
 

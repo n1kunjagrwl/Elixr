@@ -1,10 +1,8 @@
-import logging
 from collections import defaultdict
 from typing import Awaitable, Callable
 
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
-
-logger = logging.getLogger(__name__)
 
 EventPayload = dict
 EventHandler = Callable[[EventPayload, AsyncSession], Awaitable[None]]
@@ -35,9 +33,8 @@ class EventBus:
             try:
                 await handler(payload, session)
             except Exception:
-                logger.exception(
-                    "Event handler failed",
-                    extra={"event_type": event_type, "handler": handler.__qualname__},
+                logger.bind(event_type=event_type, handler=handler.__qualname__).exception(
+                    "Event handler failed"
                 )
                 raise
 
