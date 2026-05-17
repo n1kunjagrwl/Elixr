@@ -15,6 +15,8 @@ from datetime import datetime, timedelta, timezone
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 
+import logging
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -23,6 +25,28 @@ from fastapi import HTTPException, Request, status
 from elixir.shared.config import Settings
 from elixir.platform.security import create_access_token, create_refresh_token
 from elixir.shared.security import hash_otp
+
+
+# ── Loguru → caplog bridge ────────────────────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _bridge_loguru_to_caplog(caplog):
+    """Route loguru messages into pytest's caplog so tests can assert on log output."""
+    from loguru import logger
+
+    class _StdlibSink:
+        def write(self, message) -> None:
+            record = message.record
+            std_level = getattr(logging, record["level"].name, logging.DEBUG)
+            logging.getLogger(record["name"]).log(std_level, record["message"])
+
+        def flush(self) -> None:
+            pass
+
+    handler_id = logger.add(_StdlibSink(), level="DEBUG", format="{message}")
+    yield
+    logger.remove(handler_id)
 
 
 # ── Test Settings ─────────────────────────────────────────────────────────────

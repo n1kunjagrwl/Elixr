@@ -292,9 +292,8 @@ class TestRequestOTP:
         ):
             await svc.request_otp(PHONE)
 
-        # temporal is None, so send_otp should not be called from the fallback
-        # (the if self._temporal block is skipped entirely)
-        mock_twilio.send_otp.assert_not_called()
+        # temporal is None, so Twilio is called directly (else branch in service)
+        mock_twilio.send_otp.assert_called_once_with(PHONE)
 
 
 # ── verify_otp tests ──────────────────────────────────────────────────────────
@@ -321,7 +320,11 @@ class TestVerifyOTP:
             patch.object(
                 svc._repo, "create_session", new=AsyncMock(return_value=session)
             ),
+            patch.object(
+                svc._repo, "get_session_count", new=AsyncMock(return_value=1)
+            ),
         ):
+            mock_twilio.check_otp = AsyncMock(return_value=True)
             result = await svc.verify_otp(PHONE, OTP_CODE)
 
         assert result.access_token
@@ -351,7 +354,11 @@ class TestVerifyOTP:
             patch.object(
                 svc._repo, "create_session", new=AsyncMock(return_value=session)
             ) as mock_cs,
+            patch.object(
+                svc._repo, "get_session_count", new=AsyncMock(return_value=2)
+            ),
         ):
+            mock_twilio.check_otp = AsyncMock(return_value=True)
             result = await svc.verify_otp(PHONE, OTP_CODE)
 
         mock_cs.assert_called_once()
@@ -377,7 +384,11 @@ class TestVerifyOTP:
             patch.object(
                 svc._repo, "create_session", new=AsyncMock(return_value=session)
             ),
+            patch.object(
+                svc._repo, "get_session_count", new=AsyncMock(return_value=1)
+            ),
         ):
+            mock_twilio.check_otp = AsyncMock(return_value=True)
             await svc.verify_otp(PHONE, OTP_CODE)
 
         # Check that add() was called with an outbox row having event_type UserRegistered
@@ -407,7 +418,11 @@ class TestVerifyOTP:
             patch.object(
                 svc._repo, "create_session", new=AsyncMock(return_value=session)
             ),
+            patch.object(
+                svc._repo, "get_session_count", new=AsyncMock(return_value=2)
+            ),
         ):
+            mock_twilio.check_otp = AsyncMock(return_value=True)
             await svc.verify_otp(PHONE, OTP_CODE)
 
         added_objects = [call.args[0] for call in mock_db.add.call_args_list]
@@ -507,6 +522,7 @@ class TestVerifyOTP:
             ),
             patch.object(svc._repo, "increment_otp_attempt", new=mock_increment),
         ):
+            mock_twilio.check_otp = AsyncMock(return_value=False)
             with pytest.raises(OTPInvalidError):
                 await svc.verify_otp(PHONE, "000000")  # wrong code
 
@@ -536,6 +552,7 @@ class TestVerifyOTP:
             ),
             patch.object(svc._repo, "increment_otp_attempt", new=mock_increment),
         ):
+            mock_twilio.check_otp = AsyncMock(return_value=False)
             with pytest.raises(OTPInvalidError):
                 await svc.verify_otp(PHONE, "000000")  # wrong code
 
